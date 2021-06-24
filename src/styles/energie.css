@@ -1,0 +1,27 @@
+h2 {
+  text-align: center;
+}
+.box {
+  text-align: center;
+  font: 15px "Helvetica Neue";
+  background:#5F9BD1;
+  color: #fff;
+  padding: 15px 0;
+
+}
+
+.numeric-data td {
+  width: 100px;
+}
+
+.PeriodUsageDisplay {
+  transition: opacity 1s;
+}
+
+.disabled {
+  opacity: 0.3;
+}
+
+.recent-usage-graph {
+    height: 200px;
+}
