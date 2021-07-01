@@ -175,9 +175,9 @@ export class Graph extends Component<IProps, {}> {
         }
     }
 
-    onClick = (_event: MouseEvent, data: { _index: number }[]) => {
+    onClick = (_event: MouseEvent, data: { index: number }[]) => {
         if (data[0]) {
-            this.props.onClick(data[0]._index);
+            this.props.onClick(data[0].index);
         }
     };
 }
