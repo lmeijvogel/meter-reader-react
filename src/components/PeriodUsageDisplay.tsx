@@ -63,7 +63,11 @@ const PeriodUsageDisplay = observer(
         }
 
         onClick = (index: number): void => {
-            this.props.onSelect(this.props.dataProvider.descriptionAt(index));
+            const { dataProvider } = this.props;
+
+            if (dataProvider.canDrillDown) {
+                this.props.onSelect(dataProvider.descriptionAt(index));
+            }
         };
     }
 );

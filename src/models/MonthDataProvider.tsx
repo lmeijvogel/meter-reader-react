@@ -55,4 +55,6 @@ export class MonthDataProvider extends PeriodDataProvider {
     get maxWaterY() {
         return 1000;
     }
+
+    canDrillDown = true;
 }
