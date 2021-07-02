@@ -1,21 +1,34 @@
 export class RelativeConverter {
-  convert(input: number[]): number[] {
-    const copy: number[] = input.slice(0);
+    convert(input: number[]): number[] {
+        const copy: number[] = [...input];
 
-    let previousValue = copy.shift();
+        let previousValue = copy.shift();
 
-    return copy.map(function (value) {
-      let result;
+        return copy.map(function (value) {
+            let result;
 
-      if (previousValue != null && value != null) {
-        result = value - previousValue;
-      } else {
-        result = 0;
-      }
+            if (previousValue != null && value != null) {
+                const diff = value - previousValue;
 
-      previousValue = value;
+                // This is a bad workaround for moving house:
+                // The meter return absolute values, so there's a big difference
+                // between the old and new meter.
+                // (only visible in the year view, since that's the only
+                // view that has old and new measurements in the same view)
+                //
+                // A downside is that this hides one month of data.
+                if (diff < -4400) {
+                    result = 0;
+                } else {
+                    result = diff;
+                }
+            } else {
+                result = 0;
+            }
 
-      return result;
-    });
-  }
+            previousValue = value;
+
+            return result;
+        });
+    }
 }
