@@ -27,15 +27,13 @@ export class DayDataProvider extends PeriodDataProvider {
     positionInData = (element: UsageData, _dataset: (UsageData | null)[]): number => {
         const periodDescription = this.periodDescription;
 
-        const currentDate = new Date(periodDescription.year, periodDescription.month, periodDescription.day);
-
+        const startOfDay = new Date(periodDescription.year, periodDescription.month, periodDescription.day, 0, 0, 0);
         const elementTime = new Date(element.time_stamp);
-        const elementDate = new Date(elementTime.getFullYear(), elementTime.getMonth(), elementTime.getDate());
 
-        const oneDay = 24 * 60 * 60 * 1000;
-        const dayDifference = (elementDate.getTime() - currentDate.getTime()) / oneDay;
+        const diffInMs = elementTime.getTime() - startOfDay.getTime();
+        const diffInHours = Math.floor(diffInMs / 1000 / 3600);
 
-        return elementTime.getHours() + dayDifference * 24;
+        return diffInHours;
     };
 
     get maxGasY() {
