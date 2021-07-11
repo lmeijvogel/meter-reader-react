@@ -22,7 +22,7 @@ export class MonthDataProvider extends PeriodDataProvider {
         const date = new Date(element.time_stamp);
         const month = date.getMonth();
 
-        const filteredDataset = dataset.filter(el => !!el) as UsageData[];
+        const filteredDataset = dataset.filter(this.isNotNull);
 
         const minMonth = new Date(filteredDataset[0].time_stamp).getMonth();
 
@@ -54,6 +54,10 @@ export class MonthDataProvider extends PeriodDataProvider {
 
     get maxWaterY() {
         return 1000;
+    }
+
+    isNotNull<T>(element: T | null | undefined): element is T {
+        return !!element;
     }
 
     canDrillDown = true;
