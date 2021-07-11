@@ -1,12 +1,4 @@
-const DAYS_OF_WEEK = [
-  "Zondag",
-  "Maandag",
-  "Dinsdag",
-  "Woensdag",
-  "Donderdag",
-  "Vrijdag",
-  "Zaterdag",
-];
+const DAYS_OF_WEEK = ["Zo", "Ma", "Di", "Wo", "Do", "Vr", "Za"];
 
 const MONTHS = [
   "januari",
