@@ -3,9 +3,8 @@ import { observer } from "mobx-react";
 import { Component } from "react";
 
 import { LocationBarParser } from "../helpers/LocationBarParser";
-import { AppStore, LoggedInState } from "../stores/AppStore";
+import { AppStore } from "../stores/AppStore";
 
-import { LoginScreen } from "./LoginScreen";
 import { CurrentUsage } from "./CurrentUsage";
 import { RecentUsageGraphs } from "./RecentUsageGraphs";
 import { UsageGraphs } from "./UsageGraphs";
@@ -22,47 +21,40 @@ const App = observer(
         timer: any | null = null;
 
         render() {
-            const { dataProvider, liveData, loadingState, loggedIn, showRecentUsage } = this.props.store;
+            const { dataProvider, liveData, loadingState, showRecentUsage } = this.props.store;
 
             // <RunningUsage store={runningUsageStore} />
-            switch (loggedIn) {
-                case LoggedInState.LoggedIn:
-                    // Apparently, Chart.js doesn't understand 'height' and 'maxHeight' correctly, but only handles 'width' and 'max-width'.
-                    // The maxWidth here corresponds to filling a single screen (vertically) on my laptop.
-                    return (
-                        <div className="container" style={{ maxWidth: "500px" }}>
-                            <div className="row">{this.renderLiveData(liveData)}</div>
-                            <div className="row">
-                                {showRecentUsage ? (
-                                    <div>
-                                        <RecentUsageGraphs />
-                                    </div>
-                                ) : (
-                                    <UsageGraphs
-                                        loadingState={loadingState}
-                                        dataProvider={dataProvider!}
-                                        periodSelected={this.props.store.periodSelected}
-                                    />
-                                )}
+            // Apparently, Chart.js doesn't understand 'height' and 'maxHeight' correctly, but only handles 'width' and 'max-width'.
+            // The maxWidth here corresponds to filling a single screen (vertically) on my laptop.
+            return (
+                <div className="container" style={{ maxWidth: "500px" }}>
+                    <div className="row">{this.renderLiveData(liveData)}</div>
+                    <div className="row">
+                        {showRecentUsage ? (
+                            <div>
+                                <RecentUsageGraphs />
                             </div>
-                            {!showRecentUsage && (
-                                <div className="row">
-                                    {liveData !== "Error" && liveData !== "Loading" && (
-                                        <ActualReadings
-                                            stroom_dal={liveData.stroom_dal}
-                                            stroom_piek={liveData.stroom_piek}
-                                            gas={liveData.gas}
-                                        />
-                                    )}
-                                </div>
+                        ) : (
+                            <UsageGraphs
+                                loadingState={loadingState}
+                                dataProvider={dataProvider!}
+                                periodSelected={this.props.store.periodSelected}
+                            />
+                        )}
+                    </div>
+                    {!showRecentUsage && (
+                        <div className="row">
+                            {liveData !== "Error" && liveData !== "Loading" && (
+                                <ActualReadings
+                                    stroom_dal={liveData.stroom_dal}
+                                    stroom_piek={liveData.stroom_piek}
+                                    gas={liveData.gas}
+                                />
                             )}
                         </div>
-                    );
-                case LoggedInState.NotLoggedIn:
-                    return <LoginScreen loginSuccessful={this.loginSuccessful} />;
-                case LoggedInState.Unknown:
-                    return null;
-            }
+                    )}
+                </div>
+            );
         }
 
         componentDidMount() {
@@ -112,9 +104,6 @@ const App = observer(
 
         retrieveLiveData = async () => {
             const { store } = this.props;
-            if (store.loggedIn === LoggedInState.NotLoggedIn) {
-                return;
-            }
 
             const response = await fetch("/api/energy/current", { credentials: "include" });
 
@@ -147,12 +136,6 @@ const App = observer(
 
         currentUsageClicked = () => {
             this.props.store.showRecentUsage = !this.props.store.showRecentUsage;
-        };
-
-        loginSuccessful = () => {
-            this.props.store.loggedIn = LoggedInState.LoggedIn;
-
-            this.selectPeriodFromLocationBar();
         };
     }
 );
