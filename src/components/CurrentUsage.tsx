@@ -3,8 +3,6 @@ import { Component } from "react";
 
 import { LiveData } from "../models/LiveData";
 
-import { calculateCurrentWaterUsage } from "../helpers/calculateCurrentWaterUsage";
-
 type IProps = {
     liveData: LiveData | null;
     onClick: () => void;
@@ -13,7 +11,7 @@ type IProps = {
 export class CurrentUsage extends Component<IProps> {
     render() {
         return (
-            <table className="column column-20" onClick={this.onClick}>
+            <table className="column column-30" onClick={this.onClick}>
                 <thead>
                     <tr>
                         <th>Current</th>
@@ -51,6 +49,6 @@ export class CurrentUsage extends Component<IProps> {
             return "...";
         }
 
-        return calculateCurrentWaterUsage(liveData);
+        return `${liveData.water_current} L/m`;
     }
 }

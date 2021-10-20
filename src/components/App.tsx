@@ -117,9 +117,7 @@ const App = observer(
                         gas: json.gas,
                         stroom_dal: json.stroom_dal,
                         stroom_piek: json.stroom_piek,
-                        water_current: json.water_current,
-                        water_current_period_in_seconds: json.water_current_period_in_seconds,
-                        last_water_ticks: json.last_water_ticks.map((str: string) => new Date(str))
+                        water_current: json.water_current
                     });
                     break;
                 case 401:
