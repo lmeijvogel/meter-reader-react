@@ -1,6 +1,4 @@
-import { extendObservable } from "mobx";
 import { observer } from "mobx-react";
-import { Component } from "react";
 
 import { PeriodDataProvider } from "../models/PeriodDataProvider";
 import { PeriodDescription } from "../models/PeriodDescription";
@@ -9,67 +7,35 @@ import { NavigationButtons } from "./NavigationButtons";
 import { PeriodUsageDisplay } from "./PeriodUsageDisplay";
 import { LoadingState } from "../stores/AppStore";
 
-interface IProps {
+type IProps = {
     loadingState: LoadingState;
     periodSelected: (periodDescription: PeriodDescription, skipPushState: boolean) => void;
     dataProvider: PeriodDataProvider;
-}
+};
 
-const UsageGraphs = observer(
-    class UsageGraphs extends Component<IProps> {
-        constructor(props: IProps) {
-            super(props);
+const UsageGraphs = observer(({ loadingState, periodSelected, dataProvider }: IProps) => {
+    const onSelect = (periodDescription: PeriodDescription, skipPushState = false) => {
+        periodSelected(periodDescription, skipPushState);
+    };
 
-            extendObservable(this, {});
-        }
+    // TODO: Will thiw work correctly? I think so.
+    const enabled = loadingState === LoadingState.Loaded;
 
-        render() {
-            const { loadingState } = this.props;
+    if (loadingState === LoadingState.Loaded) {
+        const { periodDescription } = dataProvider;
 
-            if (loadingState === LoadingState.Loaded) {
-                const { periodDescription } = this.props.dataProvider;
+        return (
+            <div>
+                <h2>{periodDescription.toTitle()}</h2>
 
-                const usageDisplay = this.renderUsageDisplay();
+                <PeriodUsageDisplay dataProvider={dataProvider} onSelect={onSelect} enabled={enabled} />
 
-                return (
-                    <div>
-                        <h2>{periodDescription.toTitle()}</h2>
-
-                        {usageDisplay}
-
-                        <NavigationButtons
-                            periodDescription={periodDescription}
-                            onSelect={this.periodSelected}
-                            enabled={this.enabled()}
-                        />
-                    </div>
-                );
-            }
-
-            return null;
-        }
-
-        private renderUsageDisplay() {
-            const { dataProvider } = this.props;
-
-            return (
-                <PeriodUsageDisplay
-                    dataProvider={dataProvider}
-                    onSelect={this.periodSelected}
-                    enabled={this.enabled()}
-                />
-            );
-        }
-
-        periodSelected = (periodDescription: PeriodDescription, skipPushState = false) => {
-            this.props.periodSelected(periodDescription, skipPushState);
-        };
-
-        // TODO: Will thiw work correctly? I think so.
-        enabled(): boolean {
-            return this.props.loadingState === LoadingState.Loaded;
-        }
+                <NavigationButtons periodDescription={periodDescription} onSelect={onSelect} enabled={enabled} />
+            </div>
+        );
     }
-);
+
+    return null;
+});
 
 export { UsageGraphs };
