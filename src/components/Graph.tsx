@@ -3,9 +3,9 @@ import { Component } from "react";
 import { Bar } from "react-chartjs-2";
 import { ChartData } from "chart.js";
 
-import { RelativeConverter } from "../helpers/RelativeConverter";
-import { costsFor, PriceCategory } from "../helpers/PriceCalculator";
+import { convertToRelative } from "../helpers/convertToRelative";
 import { interpolateArray } from "../helpers/interpolateArray";
+import { costsFor, PriceCategory } from "../helpers/PriceCalculator";
 import { UsageData } from "../models/UsageData";
 
 type DataName = "gas" | "water" | "stroom_totaal";
@@ -80,7 +80,7 @@ export class Graph extends Component<IProps, {}> {
 
     ChartData(): ChartData {
         const interpolatedData = interpolateArray(this.dataForField());
-        const relativeData = new RelativeConverter().convert(interpolatedData);
+        const relativeData = convertToRelative(interpolatedData);
         const roundedData = relativeData.map((value) => this.truncate(value, 3));
 
         return {
