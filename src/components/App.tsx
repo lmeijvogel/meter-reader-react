@@ -2,14 +2,14 @@ import { observer } from "mobx-react";
 
 import { Component } from "react";
 
-import { LocationBarParser } from "../helpers/LocationBarParser";
 import { AppStore } from "../stores/AppStore";
 
+import { LiveData } from "../models/LiveData";
+import { parseLocationBar } from "../helpers/LocationBarParser";
 import { CurrentUsage } from "./CurrentUsage";
 import { RecentUsageGraphs } from "./RecentUsageGraphs";
 import { UsageGraphs } from "./UsageGraphs";
 import { ActualReadings } from "./ActualReadings";
-import { LiveData } from "../models/LiveData";
 // import {RunningUsage} from './RunningUsage';
 
 type Props = {
@@ -84,9 +84,7 @@ const App = observer(
         }
 
         selectPeriodFromLocationBar() {
-            const locationBarParser = new LocationBarParser();
-
-            const period = locationBarParser.parse(window.location.pathname);
+            const period = parseLocationBar(window.location.pathname);
 
             this.props.store.periodSelected(period, false);
         }
