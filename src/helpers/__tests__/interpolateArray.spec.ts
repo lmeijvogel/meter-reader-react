@@ -1,62 +1,50 @@
-import { ArrayInterpolator } from "../ArrayInterpolator";
+import { interpolateArray } from "../interpolateArray";
 
-describe("ArrayInterpolator", () => {
+describe("interpolateArray", () => {
     it("should not change a filled array", () => {
-        const interpolator = new ArrayInterpolator();
-
         const input = [10, 20, 30, 40, 50];
 
-        const actual = interpolator.call(input);
+        const actual = interpolateArray(input);
 
         assertEqualMembers(actual, input);
     });
 
     it("should not change a totally empty array", () => {
-        const interpolator = new ArrayInterpolator();
-
         const input = [null, null, null, null, null];
 
-        const actual = interpolator.call(input);
+        const actual = interpolateArray(input);
 
         assertEqualMembers(actual, input);
     });
 
     it("should leave leading nulls", () => {
-        const interpolator = new ArrayInterpolator();
-
         const input = [null, null, 30, 40, 50];
 
-        const actual = interpolator.call(input);
+        const actual = interpolateArray(input);
 
         assertEqualMembers(actual, input);
     });
 
     it("should leave trailing nulls", () => {
-        const interpolator = new ArrayInterpolator();
-
         const input = [10, 20, 30, null, null];
 
-        const actual = interpolator.call(input);
+        const actual = interpolateArray(input);
 
         assertEqualMembers(actual, input);
     });
 
     it("should interpolate data", () => {
-        const interpolator = new ArrayInterpolator();
-
         const input = [10, null, null, null, 50];
 
-        const actual = interpolator.call(input);
+        const actual = interpolateArray(input);
 
         assertEqualMembers(actual, [10, 20, 30, 40, 50]);
     });
 
     it("should interpolate data", () => {
-        const interpolator = new ArrayInterpolator();
-
         const input = [null, 10, null, 30, null, 50];
 
-        const actual = interpolator.call(input);
+        const actual = interpolateArray(input);
 
         assertEqualMembers(actual, [null, 10, 20, 30, 40, 50]);
     });
