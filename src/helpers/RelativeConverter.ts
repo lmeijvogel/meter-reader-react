@@ -1,6 +1,8 @@
+import { Maybe } from "../lib/Maybe";
+
 export class RelativeConverter {
-    convert(input: number[]): number[] {
-        const copy: number[] = [...input];
+    convert(input: Maybe<number>[]): number[] {
+        const copy = [...input];
 
         let previousValue = copy.shift();
 

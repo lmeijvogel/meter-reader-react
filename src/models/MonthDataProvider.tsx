@@ -3,7 +3,7 @@ import { PeriodDataProvider } from "./PeriodDataProvider";
 import { UsageData } from "./UsageData";
 
 export class MonthDataProvider extends PeriodDataProvider {
-    constructor(public periodDescription: MonthDescription, public readonly periodUsage: Array<UsageData | null>) {
+    constructor(public periodDescription: MonthDescription, public readonly periodUsage: UsageData[]) {
         super();
     }
 
@@ -18,23 +18,6 @@ export class MonthDataProvider extends PeriodDataProvider {
         return this.descriptionAt(intDay - 1).toTitle();
     };
 
-    positionInData = (element: UsageData, dataset: (UsageData | null)[]) => {
-        const date = new Date(element.time_stamp);
-        const month = date.getMonth();
-
-        const filteredDataset = dataset.filter(this.isNotNull);
-
-        const minMonth = new Date(filteredDataset[0].time_stamp).getMonth();
-
-        if (month === minMonth) {
-            return date.getDate() - 1;
-        } else {
-            const lastDayInMonth = new Date(date.getFullYear(), minMonth + 1, 0, 12, 0, 0);
-
-            return lastDayInMonth.getDate();
-        }
-    };
-
     maxDate() {
         // +1 because we want the 0th day of the next month (== last day of current month)
         return new Date(this.periodDescription.year, this.periodDescription.month + 1, 0).getDate();
@@ -42,6 +25,29 @@ export class MonthDataProvider extends PeriodDataProvider {
 
     descriptionAt(index: number): DayDescription {
         return new DayDescription(this.periodDescription.year, this.periodDescription.month, index + 1);
+    }
+
+    get dataRange() {
+        switch (this.periodDescription.month) {
+            case 1:
+                const isLeapYear = new Date(this.periodDescription.year, 1, 29).getDate() === 29;
+
+                if (isLeapYear) {
+                    return { min: 1, max: 30 };
+                } else {
+                    return { min: 1, max: 29 };
+                }
+            case 0:
+            case 2:
+            case 4:
+            case 6:
+            case 7:
+            case 9:
+            case 11:
+                return { min: 1, max: 32 };
+            default:
+                return { min: 1, max: 31 };
+        }
     }
 
     get maxGasY() {

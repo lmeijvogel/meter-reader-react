@@ -1,15 +1,22 @@
 import { PeriodDescription } from "./PeriodDescription";
 import { UsageData } from "./UsageData";
 
+type MeasurementFieldName = keyof Omit<UsageData, "time_stamp">;
+
 export abstract class PeriodDataProvider {
     abstract periodDescription: PeriodDescription;
-    abstract periodUsage: Array<UsageData | null>;
+    abstract periodUsage: UsageData[];
 
     abstract labels(): number[];
     abstract tooltipLabel: (field: string) => string;
-    abstract positionInData: (element: UsageData, dataset: (UsageData | null)[]) => number;
 
     abstract descriptionAt(index: number): PeriodDescription;
+
+    totalUsage(field: MeasurementFieldName): number {
+        return this.maxValue(field) - this.minValue(field);
+    }
+
+    abstract get dataRange(): { min: number; max: number };
 
     abstract get maxGasY(): number;
 
@@ -27,5 +34,13 @@ export abstract class PeriodDataProvider {
         }
 
         return result;
+    }
+
+    private minValue(field: MeasurementFieldName): number {
+        return this.periodUsage[0]?.[field] ?? 0;
+    }
+
+    private maxValue(field: MeasurementFieldName): number {
+        return this.periodUsage[this.periodUsage.length - 1]?.[field] ?? 0;
     }
 }

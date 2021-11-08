@@ -1,7 +1,7 @@
 import { observer } from "mobx-react";
 
 import { PeriodDescription } from "../models//PeriodDescription";
-import { DataShifter } from "../helpers/DataShifter";
+import { spreadData } from "../helpers/spreadData";
 import { Graph } from "./Graph";
 import { PeriodDataProvider } from "../models/PeriodDataProvider";
 
@@ -23,12 +23,31 @@ const PeriodUsageDisplay = observer(({ dataProvider, enabled, onSelect }: Props)
     }
 
     const labels = dataProvider.labels();
-    const dataShifter = new DataShifter();
 
-    const data = dataShifter.call(dataProvider.periodUsage, dataProvider.positionInData);
+    if (!dataProvider.periodUsage) {
+        return <div>Loading</div>;
+    }
+
+    const data = spreadData(dataProvider.periodUsage, dataProvider.dataRange);
 
     return (
         <div className={"PeriodUsageDisplay" + (enabled ? "" : " disabled")}>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Gas</th>
+                        <th>Stroom</th>
+                        <th>Water</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>{dataProvider.totalUsage("gas").toFixed(3)}</td>
+                        <td>{dataProvider.totalUsage("stroom_totaal").toFixed(3)}</td>
+                        <td>{dataProvider.totalUsage("water")}</td>
+                    </tr>
+                </tbody>
+            </table>
             <Graph
                 label="Gas"
                 labels={labels}

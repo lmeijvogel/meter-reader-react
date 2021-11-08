@@ -55,7 +55,7 @@ export class AppStore {
             .catch(() => this.setErrorState());
     };
 
-    private setData = (periodDescription: PeriodDescription, json: Array<UsageData | null>) => {
+    private setData = (periodDescription: PeriodDescription, json: UsageData[]) => {
         this.dataProvider = this.buildDataProvider(periodDescription, json);
 
         this.loadingState = LoadingState.Loaded;
@@ -67,10 +67,7 @@ export class AppStore {
         this.loadingState = LoadingState.ErrorLoading;
     };
 
-    private buildDataProvider(
-        periodDescription: PeriodDescription,
-        periodUsage: Array<UsageData | null>
-    ): PeriodDataProvider {
+    private buildDataProvider(periodDescription: PeriodDescription, periodUsage: UsageData[]): PeriodDataProvider {
         if (periodDescription instanceof YearDescription) {
             return new YearDataProvider(periodDescription, periodUsage);
         }

@@ -3,7 +3,7 @@ import { PeriodDataProvider } from "./PeriodDataProvider";
 import { UsageData } from "./UsageData";
 
 export class YearDataProvider extends PeriodDataProvider {
-    constructor(public periodDescription: YearDescription, public readonly periodUsage: Array<UsageData | null>) {
+    constructor(public periodDescription: YearDescription, public readonly periodUsage: UsageData[]) {
         super();
     }
 
@@ -18,19 +18,15 @@ export class YearDataProvider extends PeriodDataProvider {
         return this.descriptionAt(intMonth - 1).toTitle();
     };
 
-    positionInData = (element: UsageData, dataset: (UsageData | null)[]): number => {
-        const filteredDataset = dataset.filter((el) => !!el) as UsageData[];
-
-        const years = filteredDataset.map((el) => new Date(el.time_stamp).getFullYear());
-        const minYear = Math.min.apply(null, years);
-
-        const date = new Date(element.time_stamp);
-
-        return date.getMonth() + (date.getFullYear() - minYear) * 12;
-    };
-
     descriptionAt(index: number): MonthDescription {
         return new MonthDescription(this.periodDescription.year, index);
+    }
+
+    get dataRange() {
+        return {
+            min: 1,
+            max: 12
+        };
     }
 
     get maxGasY() {

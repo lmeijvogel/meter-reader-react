@@ -1,98 +1,50 @@
-type optNumber = number | null;
+import { Maybe } from "../lib/Maybe";
 
 export class ArrayInterpolator {
-    call(input: optNumber[]): number[] {
-        const firstNonEmptyIndex: number = this.firstNonEmptyIndex(input);
+    call(input: Maybe<number>[]): Maybe<number>[] {
+        const scratch: (Maybe<number> | "skip")[] = [...input];
 
-        if (firstNonEmptyIndex === -1) {
-            // No elements are filled in!
-            return [];
+        /* First mark leading and trailing nulls since they can't be interpolated.
+         * This will make it easier later on to skip them but still include the correct
+         * number of nulls
+         */
+        for (let i = 0; input[i] === null; i++) {
+            scratch[i] = "skip";
         }
 
-        let rest: optNumber[];
+        for (let i = input.length - 1; input[i] === null; i--) {
+            scratch[i] = "skip";
+        }
 
-        if (firstNonEmptyIndex === 0) {
-            // Fill a single range by finding the next non-empty element and
-            // interpolate between them
-
-            // Skip the first element, but still count it in the offset
-            const nextNonEmpty = this.firstNonEmptyIndex(this.tail(input)) + 1;
-
-            // No further elements are filled in, nothing to interpolate
-            if (nextNonEmpty === 0) {
-                return input.slice(0, 1) as number[];
+        /* Note: This actually alters the input array to contain the interpolated values */
+        return scratch.map((value, i) => {
+            if (value === "skip") {
+                return null;
             }
 
-            const first: optNumber[] = this.take(input, nextNonEmpty + 1);
-            rest = this.drop(input, nextNonEmpty);
+            if (value !== null) {
+                return value;
+            } else {
+                const interpolatedValue = this.interpolateValue(scratch, i);
 
-            const interpolatedFirst = this.interpolate(first);
-
-            return this.initial(interpolatedFirst).concat(this.call(rest)) as number[];
-        } else {
-            const empties: optNumber[] = this.take(input, firstNonEmptyIndex);
-            rest = this.drop(input, firstNonEmptyIndex);
-
-            return empties.concat(this.call(rest)) as number[];
-        }
-    }
-
-    interpolate(array: optNumber[]): number[] {
-        const first = array[0] as number;
-        const last = array[array.length - 1] as number;
-        const count = array.length;
-
-        const stepSize = (last - first) / (count - 1);
-
-        return this.range(count).map((el) => first + el * stepSize);
-    }
-
-    firstNonEmptyIndex(input: optNumber[]): number {
-        return this.firstIndexWhereInt(input, (el: optNumber) => el !== 0 && el !== null);
-    }
-
-    firstIndexWhereInt(input: optNumber[], test: (el: optNumber) => boolean): number {
-        if (input.length === 0) {
-            return -1;
-        }
-
-        const head = input[0];
-
-        if (test(head)) {
-            return 0;
-        } else {
-            const indexInTail = this.firstIndexWhereInt(this.tail(input), test);
-
-            if (indexInTail === -1) {
-                return -1;
+                scratch[i] = interpolatedValue;
+                return interpolatedValue;
             }
-            return 1 + indexInTail;
-        }
+        });
     }
 
-    take(input: optNumber[], count: number): optNumber[] {
-        return input.slice(0, count);
-    }
+    private interpolateValue(scratch: (Maybe<number> | "skip")[], position: number) {
+        /* This should always exist since it either existed before or was just added by the
+         * previous interpolation */
+        const previousValue = scratch[position - 1] as number;
 
-    drop(input: optNumber[], count: number): optNumber[] {
-        return input.slice(count);
-    }
+        const nextElements = scratch.slice(position);
+        const nextNonEmptyIndex = nextElements.findIndex((el) => el !== null);
+        const nextNonEmptyValue = nextElements[nextNonEmptyIndex] as number;
 
-    tail(input: optNumber[]): optNumber[] {
-        return input.slice(1);
-    }
+        const stepSize = (nextNonEmptyValue - previousValue) / (nextNonEmptyIndex + 1);
+        const interpolatedValue = previousValue + stepSize;
 
-    initial(input: optNumber[]): optNumber[] {
-        return input.slice(0, input.length - 1);
-    }
-
-    range(count: number): number[] {
-        let result: number[] = [];
-
-        for (let i: number = 0; i < count; i++) {
-            result.push(i);
-        }
-
-        return result;
+        return interpolatedValue;
     }
 }
