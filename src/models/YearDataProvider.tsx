@@ -7,15 +7,8 @@ export class YearDataProvider extends PeriodDataProvider {
         super();
     }
 
-    labels(): number[] {
-        var range = this.range(1, 13);
-
-        return range;
-    }
-
-    tooltipLabel = (month: string) => {
-        const intMonth = parseInt(month, 10);
-        return this.descriptionAt(intMonth - 1).toTitle();
+    tooltipLabel = (month: number) => {
+        return this.descriptionAt(month).toTitle();
     };
 
     descriptionAt(index: number): MonthDescription {
@@ -25,7 +18,7 @@ export class YearDataProvider extends PeriodDataProvider {
     get dataRange() {
         return {
             min: 1,
-            max: 12
+            max: 13
         };
     }
 

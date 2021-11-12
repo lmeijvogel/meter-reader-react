@@ -14,13 +14,8 @@ export class DayDataProvider extends PeriodDataProvider {
         return this.periodDescription;
     }
 
-    labels(): number[] {
-        return this.range(0, 24);
-    }
-
-    tooltipLabel = (hour: string): string => {
-        const intHour = parseInt(hour, 10);
-        const nextHour = (intHour + 1) % 24;
+    tooltipLabel = (hour: number): string => {
+        const nextHour = (hour + 1) % 24;
         return `${hour}:00 - ${nextHour}:00`;
     };
 

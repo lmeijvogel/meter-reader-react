@@ -7,8 +7,7 @@ export abstract class PeriodDataProvider {
     abstract periodDescription: PeriodDescription;
     abstract periodUsage: UsageData[];
 
-    abstract labels(): number[];
-    abstract tooltipLabel: (field: string) => string;
+    abstract tooltipLabel: (field: number) => string;
 
     abstract descriptionAt(index: number): PeriodDescription;
 
@@ -25,16 +24,6 @@ export abstract class PeriodDataProvider {
     abstract get maxWaterY(): number;
 
     abstract canDrillDown: boolean;
-
-    protected range(start: number, end: number): number[] {
-        let result: number[] = [];
-
-        for (let i: number = start; i < end; i++) {
-            result.push(i);
-        }
-
-        return result;
-    }
 
     private minValue(field: MeasurementFieldName): number {
         return this.periodUsage[0]?.[field] ?? 0;

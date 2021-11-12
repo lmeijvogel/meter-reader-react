@@ -5,6 +5,8 @@ import { spreadData } from "../helpers/spreadData";
 import { Graph } from "./Graph";
 import { PeriodDataProvider } from "../models/PeriodDataProvider";
 
+export type GraphXOffset = "on_value" | "between_values";
+
 type Props = {
     dataProvider: PeriodDataProvider;
     enabled: boolean;
@@ -22,8 +24,6 @@ const PeriodUsageDisplay = observer(({ dataProvider, enabled, onSelect }: Props)
         return null;
     }
 
-    const labels = dataProvider.labels();
-
     if (!dataProvider.periodUsage) {
         return <div>Loading</div>;
     }
@@ -32,51 +32,35 @@ const PeriodUsageDisplay = observer(({ dataProvider, enabled, onSelect }: Props)
 
     return (
         <div className={"PeriodUsageDisplay" + (enabled ? "" : " disabled")}>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Gas</th>
-                        <th>Stroom</th>
-                        <th>Water</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td>{dataProvider.totalUsage("gas").toFixed(3)}</td>
-                        <td>{dataProvider.totalUsage("stroom_totaal").toFixed(3)}</td>
-                        <td>{dataProvider.totalUsage("water")}</td>
-                    </tr>
-                </tbody>
-            </table>
             <Graph
                 label="Gas"
-                labels={labels}
                 data={data}
                 maxY={dataProvider.maxGasY}
                 fieldName="gas"
                 color="#e73711"
                 onClick={onClick}
                 tooltipLabelBuilder={dataProvider.tooltipLabel}
+                xOffset={dataProvider.periodDescription.xOffset}
             />
             <Graph
                 label="Stroom"
-                labels={labels}
                 data={data}
                 maxY={dataProvider.maxStroomY}
                 fieldName="stroom_totaal"
                 color="#f0ad4e"
                 onClick={onClick}
                 tooltipLabelBuilder={dataProvider.tooltipLabel}
+                xOffset={dataProvider.periodDescription.xOffset}
             />
             <Graph
                 label="Water"
-                labels={labels}
                 data={data}
                 maxY={dataProvider.maxWaterY}
                 fieldName="water"
                 color="#428bca"
                 onClick={onClick}
                 tooltipLabelBuilder={dataProvider.tooltipLabel}
+                xOffset={dataProvider.periodDescription.xOffset}
             />
         </div>
     );

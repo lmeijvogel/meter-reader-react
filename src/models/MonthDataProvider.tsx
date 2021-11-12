@@ -7,15 +7,8 @@ export class MonthDataProvider extends PeriodDataProvider {
         super();
     }
 
-    labels() {
-        var range = this.range(1, this.maxDate() + 1);
-
-        return range;
-    }
-
-    tooltipLabel = (day: string) => {
-        const intDay = parseInt(day, 10);
-        return this.descriptionAt(intDay - 1).toTitle();
+    tooltipLabel = (day: number) => {
+        return this.descriptionAt(day).toTitle();
     };
 
     maxDate() {

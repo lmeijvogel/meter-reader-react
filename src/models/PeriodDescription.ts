@@ -1,3 +1,5 @@
+import { GraphXOffset } from "../components/PeriodUsageDisplay";
+
 const DAYS_OF_WEEK = ["Zo", "Ma", "Di", "Wo", "Do", "Vr", "Za"];
 
 const MONTHS = [
@@ -18,6 +20,8 @@ const MONTHS = [
 const firstMeasurementDate = new Date(2014, 2, 3);
 
 export abstract class PeriodDescription {
+    abstract readonly xOffset: GraphXOffset;
+
     padDatePart(part: number): string {
         const stringPart = part.toString();
 
@@ -59,6 +63,8 @@ export abstract class PeriodDescription {
 }
 
 export class YearDescription extends PeriodDescription {
+    readonly xOffset = "on_value";
+
     year: number;
 
     constructor(year: number) {
@@ -96,6 +102,8 @@ export class YearDescription extends PeriodDescription {
 }
 
 export class MonthDescription extends PeriodDescription {
+    readonly xOffset = "on_value";
+
     year: number;
     month: number;
 
@@ -139,6 +147,8 @@ export class MonthDescription extends PeriodDescription {
 }
 
 export class DayDescription extends PeriodDescription {
+    readonly xOffset = "between_values";
+
     year: number;
     month: number;
     day: number;

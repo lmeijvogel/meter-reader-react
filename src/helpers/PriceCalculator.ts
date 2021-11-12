@@ -12,7 +12,11 @@ export class Money {
     }
 
     toString(): string {
-        return `€ ${this.euros.toFixed(2)}`;
+        const wholeEuros = Math.floor(this.euros);
+        const cents = Math.floor(100 * (this.euros - wholeEuros));
+
+        const paddedCents = cents < 10 ? `0${cents}` : cents;
+        return `€ ${Intl.NumberFormat("nl-NL").format(wholeEuros)},${paddedCents}`;
     }
 }
 
@@ -48,7 +52,7 @@ const prices: RateForDateRange[] = [
     {
         gasPrice: new Money(0.68358),
         stroomPrice: new Money(0.22035),
-        // Incl. BTW. Rate is given on the Evides website in per m3, but I'd like to show in liters, so divide by 1000.
+        // Incl. BTW. Rate is given on the Vandebron website in per m3, but I'd like to show in liters, so divide by 1000.
         waterPrice: new Money(1.30037 / 1000),
         validFrom: new Date(2019, 11, 26),
         validUntil: new Date(2022, 11, 26) // 25 december: End of current contract
