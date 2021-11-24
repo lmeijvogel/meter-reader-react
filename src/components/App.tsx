@@ -29,11 +29,9 @@ const App = observer(
             return (
                 <div className="container" style={{ maxWidth: "500px" }}>
                     <div className="row">{this.renderLiveData(liveData)}</div>
-                    <div className="row">
+                    <div className="row mainContent">
                         {showRecentUsage ? (
-                            <div>
-                                <RecentUsageGraphs />
-                            </div>
+                            <RecentUsageGraphs />
                         ) : (
                             <UsageGraphs
                                 loadingState={loadingState}
@@ -74,12 +72,6 @@ const App = observer(
         }
 
         renderLiveData(liveData: LiveData | "Error" | "Loading") {
-            if (liveData === "Loading") {
-                return "Loading LiveData";
-            } else if (liveData === "Error") {
-                return "Error loading LiveData";
-            }
-
             return <CurrentUsage liveData={liveData} onClick={this.currentUsageClicked} />;
         }
 

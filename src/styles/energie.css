@@ -1,27 +1,38 @@
 h2 {
-  text-align: center;
+    text-align: center;
 }
+
 .box {
-  text-align: center;
-  font: 15px "Helvetica Neue";
-  background:#5F9BD1;
-  color: #fff;
-  padding: 15px 0;
-
+    text-align: center;
+    font: 15px "Helvetica Neue";
+    background: #5f9bd1;
+    color: #fff;
+    padding: 15px 0;
 }
 
+.mainContent {
+    justify-content: center;
+}
 .numeric-data td {
-  width: 100px;
+    width: 100px;
 }
 
 .PeriodUsageDisplay {
-  transition: opacity 1s;
+    transition: opacity 1s;
 }
 
 .disabled {
-  opacity: 0.3;
+    opacity: 0.3;
 }
 
-.recent-usage-graph {
-    height: 200px;
+.gauges {
+    display: flex;
+    flex-direction: row;
+
+    height: 110px;
+    width: 100%;
+
+    justify-content: space-evenly;
+    align-items: center;
+    margin-bottom: 20px;
 }

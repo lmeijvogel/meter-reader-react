@@ -4,6 +4,7 @@ import { PeriodDescription } from "../models//PeriodDescription";
 import { spreadData } from "../helpers/spreadData";
 import { Graph } from "./Graph";
 import { PeriodDataProvider } from "../models/PeriodDataProvider";
+import { Color } from "../lib/Colors";
 
 export type GraphXOffset = "on_value" | "between_values";
 
@@ -37,7 +38,7 @@ const PeriodUsageDisplay = observer(({ dataProvider, enabled, onSelect }: Props)
                 data={data}
                 maxY={dataProvider.maxGasY}
                 fieldName="gas"
-                color="#e73711"
+                color={Color.gas}
                 onClick={onClick}
                 tooltipLabelBuilder={dataProvider.tooltipLabel}
                 xOffset={dataProvider.periodDescription.xOffset}
@@ -46,22 +47,24 @@ const PeriodUsageDisplay = observer(({ dataProvider, enabled, onSelect }: Props)
                 label="Stroom"
                 data={data}
                 maxY={dataProvider.maxStroomY}
-                fieldName="stroom_totaal"
-                color="#f0ad4e"
+                fieldName="stroom"
+                color={Color.stroom}
                 onClick={onClick}
                 tooltipLabelBuilder={dataProvider.tooltipLabel}
                 xOffset={dataProvider.periodDescription.xOffset}
             />
-            <Graph
-                label="Water"
-                data={data}
-                maxY={dataProvider.maxWaterY}
-                fieldName="water"
-                color="#428bca"
-                onClick={onClick}
-                tooltipLabelBuilder={dataProvider.tooltipLabel}
-                xOffset={dataProvider.periodDescription.xOffset}
-            />
+            {
+                <Graph
+                    label="Water"
+                    data={data}
+                    maxY={dataProvider.maxWaterY}
+                    fieldName="water"
+                    color={Color.water}
+                    onClick={onClick}
+                    tooltipLabelBuilder={dataProvider.tooltipLabel}
+                    xOffset={dataProvider.periodDescription.xOffset}
+                />
+            }
         </div>
     );
 });

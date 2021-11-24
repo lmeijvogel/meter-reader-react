@@ -18,7 +18,7 @@ const UsageGraphs = observer(({ loadingState, periodSelected, dataProvider }: IP
         periodSelected(periodDescription, skipPushState);
     };
 
-    // TODO: Will thiw work correctly? I think so.
+    // TODO: Will this work correctly? I think so.
     const enabled = loadingState === LoadingState.Loaded;
 
     if (loadingState === LoadingState.Loaded) {

@@ -1,12 +1,19 @@
-import { observable, IObservableArray } from "mobx";
+import { observable, IObservableArray, action } from "mobx";
 import { UsageData } from "../models/UsageData";
 
 export class RecentUsageGraphsStore {
     json: IObservableArray<any> = observable([]);
 
-    setData(json: any) {
-        this.json.replace(json);
-    }
+    fetchData = action(async () => {
+        const response = await fetch("/api/energy/recent", { credentials: "include" });
+
+        if (response.status === 200) {
+            const json = await response.json();
+            this.json.replace(json);
+        } else {
+            this.json.replace([]);
+        }
+    });
 
     relevantUsages(): UsageData[] {
         const lastHalf = this.json.slice(0, this.json.length / 2).reverse();
@@ -19,7 +26,7 @@ export class RecentUsageGraphsStore {
     }
 
     stroomData(): number[] {
-        const stroomTotals = this.relevantUsages().map((u) => u.stroom_dal + u.stroom_piek);
+        const stroomTotals = this.relevantUsages().map((u) => u.stroom);
         return this.makeRelative(stroomTotals).map((u) => this.truncate(u * 1000, 2));
     }
 

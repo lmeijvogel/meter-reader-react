@@ -1,248 +1,305 @@
-import { useEffect, useRef } from "react";
+import * as React from "react";
+import { createRef } from "react";
 
 import * as d3 from "d3";
 
 import { convertToRelative } from "../helpers/convertToRelative";
 import { interpolateArray } from "../helpers/interpolateArray";
 import { costsFor, PriceCategory } from "../helpers/PriceCalculator";
-import { UsageData } from "../models/UsageData";
+import { UsageData, UsageField } from "../models/UsageData";
 import { GraphXOffset } from "./PeriodUsageDisplay";
-
-type DataName = "gas" | "water" | "stroom_totaal";
+import { assertNever } from "../lib/assertNever";
 
 type Props = {
     label: string;
     data: (UsageData | null)[];
     maxY: number;
-    fieldName: DataName;
+    fieldName: UsageField;
     color: string;
     onClick: (index: number) => void;
     tooltipLabelBuilder: (title: number) => string;
     xOffset: GraphXOffset;
 };
 
-export function Graph({ label, data, maxY, fieldName, color, onClick, tooltipLabelBuilder, xOffset }: Props) {
-    const ref = useRef<SVGSVGElement | null>(null);
+const width = 480;
+const height = 240;
+const padding = {
+    top: 30,
+    right: 10,
+    bottom: 10,
+    left: 10
+};
 
-    useEffect(() => {
-        renderGraph();
-    }, [data]);
+const axisWidth = 30;
+const axisHeight = 10;
 
-    const width = 480;
-    const height = 240;
-    const padding = {
-        top: 30,
-        right: 10,
-        bottom: 10,
-        left: 10
-    };
+export class Graph extends React.Component<Props> {
+    private readonly elementRef = createRef<SVGSVGElement>();
 
-    const axisWidth = 30;
-    const axisHeight = 10;
+    private svg: d3.Selection<d3.BaseType, unknown, HTMLElement, any> | null = null;
 
-    const interpolatedData = interpolateArray(dataForField());
-    const relativeData = convertToRelative(interpolatedData);
-    const roundedData = relativeData.map((value) => truncate(value, 3));
+    private readonly scaleX: d3.ScaleBand<string>;
+    private readonly xAxis: d3.Axis<string>;
 
-    const scaleX = d3
-        .scaleLinear()
-        .domain([0, roundedData.length])
-        .range([padding.left + axisWidth, width - padding.right]);
+    private readonly scaleY: d3.ScaleLinear<number, number, never>;
+    private readonly yAxis: d3.Axis<d3.NumberValue>;
 
-    const scaleY = d3
-        .scaleLinear()
-        .domain([0, maxY])
-        .range([height - padding.bottom - axisHeight, padding.top])
-        .clamp(true);
+    constructor(props: Props) {
+        super(props);
 
-    var xAxis = d3.axisBottom(scaleX).tickValues(buildTicks(roundedData.length));
-    var yAxis = d3.axisLeft(scaleY);
+        this.scaleX = d3.scaleBand().padding(0.15).paddingOuter(0);
+        this.xAxis = d3.axisBottom(this.scaleX.align(0));
 
-    function renderGraph() {
-        const id = ref.current!.id;
+        this.scaleY = d3.scaleLinear().clamp(true);
+        this.yAxis = d3.axisLeft(this.scaleY);
+    }
 
-        const htmlElement = document.getElementById(id);
+    componentDidMount() {
+        this.initializeGraph();
+        this.renderGraph(this.svg!);
+    }
 
-        if (!!htmlElement) {
-            htmlElement.innerHTML = "";
-        }
+    componentDidUpdate() {
+        this.renderGraph(this.svg!);
+    }
 
-        const svg = d3
+    render() {
+        return (
+            <div>
+                <svg id={`chart_${Math.floor(Math.random() * 1000)}`} ref={this.elementRef}>
+                    <g className="xAxis" />
+                    <g className="yAxis" />
+                    <g className="gridLines" />
+                </svg>
+            </div>
+        );
+    }
+
+    initializeGraph() {
+        const id = this.elementRef.current!.id;
+
+        this.svg = d3
             .select("#" + id)
             .attr("width", width)
             .attr("height", height)
             .style("background-color", "white");
 
-        svg.append("g")
-            .attr("transform", `translate(0, ${scaleY(0)})`)
-            .call(xAxis);
+        addChartTitle(this.svg);
+    }
 
-        svg.append("g")
-            .attr("transform", `translate(${scaleX(0)}, 0)`)
-            .call(yAxis);
+    renderGraph(svg: d3.Selection<d3.BaseType, unknown, HTMLElement, any>) {
+        const relativeData = preprocessData(this.dataForField(), truncate);
 
-        const yTickValues = yAxis.tickValues() || scaleY.ticks();
-        svg.append("g")
+        const domain = d3
+            .range(this.props.xOffset === "between_values" ? 0 : 1, relativeData.length + 1, 1)
+            .map((el) => el.toString());
+
+        this.scaleX.domain(domain).range([padding.left + axisWidth, width - padding.right]);
+        this.scaleY.domain([0, this.props.maxY]).range([height - padding.bottom - axisHeight, padding.top]);
+
+        this.updateAxes(svg, relativeData);
+
+        this.drawGridLines(svg);
+        this.drawBars(svg, relativeData);
+
+        const firstDataElement = this.props.data[0];
+
+        svg.select(".chartTitle").text(
+            buildChartTitle(this.props.label, this.totalUsage(), this.props.fieldName, firstDataElement)
+        );
+    }
+
+    clickBar = ({ target }: { target: SVGRectElement }) => {
+        const index = parseInt(target.attributes.getNamedItem("index")!.value, 10);
+        this.props.onClick(index);
+    };
+
+    showTooltip = (event: any, value: number) => {
+        const index = parseInt(event.target.attributes.getNamedItem("index")!.value, 10);
+        showTooltip(this.buildTooltipContents(index, value), event);
+    };
+
+    hideTooltip = () => {
+        const tooltip = d3.select("#tooltip");
+        tooltip.style("opacity", 0);
+    };
+
+    private updateAxes(svg: d3.Selection<d3.BaseType, unknown, HTMLElement, any>, relativeData: number[]) {
+        this.xAxis.tickValues(buildTicks(relativeData.length));
+
+        svg.select(".xAxis")
+            .attr("transform", `translate(0, ${this.scaleY(0)})`)
+            .call(this.xAxis as any);
+        svg.select(".yAxis")
+            .attr("transform", `translate(${padding.left + axisWidth}, 0)`)
+            .call(this.yAxis as any);
+    }
+
+    drawGridLines(svg: d3.Selection<d3.BaseType, unknown, HTMLElement, any>) {
+        const yTickValues = this.yAxis.tickValues() || this.scaleY.ticks();
+        svg.select("g.gridLines")
             .selectAll("line")
             .data(yTickValues)
             .join("line")
             .attr("x1", padding.left + axisWidth)
-            .attr("y1", (el) => scaleY(el))
+            .attr("y1", (el) => this.scaleY(el))
             .attr("x2", width - padding.right)
-            .attr("y2", (el) => scaleY(el))
+            .attr("y2", (el) => this.scaleY(el))
             .attr("stroke", "#ddd")
             .attr("stroke-width", 1);
+    }
 
-        const xTickValues = xAxis.tickValues() || scaleX.ticks();
-        svg.append("g")
-            .selectAll("line")
-            .data(xTickValues)
-            .join("line")
-            .attr("x1", (el) => scaleX(el))
-            .attr("y1", scaleY(0))
-            .attr("x2", (el) => scaleX(el))
-            .attr("y2", padding.bottom)
-            .attr("stroke", "#ddd")
-            .attr("stroke-width", 1);
-
-        const barXOffset = xOffset === "on_value" ? 0.5 : 0;
-        const click = ({ target }: { target: SVGRectElement }) => {
-            const index = parseInt(target.attributes.getNamedItem("index")!.value, 10);
-            onClick(index);
-        };
-
-        const tooltip = d3.select("#tooltip");
-
+    private drawBars(svg: d3.Selection<d3.BaseType, unknown, HTMLElement, any>, relativeData: number[]) {
         svg.selectAll("rect")
-            .data(roundedData)
-            .join("rect")
-            .attr("x", (_val, i) => scaleX(i + barXOffset) + 2)
-            .attr("y", (el) => scaleY(el))
-            .attr("width", scaleX(1) - scaleX(0) - 4)
-            .attr("height", (el) => scaleY(0) - scaleY(el))
-            .attr("fill", color)
-            .attr("index", (_d, i) => i)
+            .data(relativeData)
+            .join(
+                (enter) =>
+                    enter
+                        .append("rect")
+                        .on("click", this.clickBar)
+                        .on("mouseenter", this.showTooltip)
+                        .on("mouseleave", this.hideTooltip)
+                        .attr("width", this.scaleX.bandwidth())
 
-            .on("click", click)
-            .on("mouseenter", (event, value) => {
-                const index = parseInt(event.target.attributes.getNamedItem("index")!.value, 10);
-                tooltip
-                    .html(buildTooltipContents(index, value))
-                    .style("left", event.pageX + 20 + "px")
-                    .style("top", event.pageY - 58 + "px")
-                    .style("opacity", 1);
-            })
-            .on("mouseleave", () => {
-                tooltip.style("opacity", 0);
-            });
+                        .attr("y", (el) => this.scaleY(el))
+                        .attr("height", (el) => this.scaleY(0) - this.scaleY(el))
+                        .attr("x", (_val, i) => this.calculateBarXPosition(i) + this.scaleX.bandwidth() * 1.15)
 
-        const middleOfChart = (padding.left + axisWidth + (width - padding.right)) / 2;
-        svg.append("text")
-            .attr("x", middleOfChart)
-            .attr("y", padding.top / 2)
-            .style("text-anchor", "middle")
-            .style("font-style", "italic")
-            .text(buildChartTitle());
+                        .transition()
+                        .duration(500)
+                        .attr("x", (_val, i) => this.calculateBarXPosition(i))
+                        .selection(),
+                (update) =>
+                    update
+                        .on("click", this.clickBar)
+                        .transition()
+                        .duration(500)
+                        .attr("y", (el) => this.scaleY(el))
+                        .attr("height", (el) => this.scaleY(0) - this.scaleY(el))
+                        .attr("x", (_val, i) => this.calculateBarXPosition(i))
+                        .attr("width", this.scaleX.bandwidth()),
+
+                (exit) => exit.remove()
+            )
+            .attr("fill", this.props.color)
+            .attr("index", (_d, i) => i);
     }
 
-    function buildTooltipContents(index: number, value: number) {
-        return `${tooltipLabelBuilder(index)}:<br />${value} ${unit()}`;
+    totalUsage() {
+        const actualValues = this.dataForField().filter(isNotNull);
+
+        return Math.max(...actualValues) - Math.min(...actualValues);
     }
 
-    function buildChartTitle(): string {
-        return `${label}: ${printableTotal()} ${unit()} (${printableCosts()})`;
+    calculateBarXPosition(i: number) {
+        const shiftBars = this.props.xOffset === "between_values" ? this.scaleX.bandwidth() / 2 : 0;
+        const pos = this.scaleX((i + 1).toString());
+
+        return !!pos ? pos - shiftBars : 0;
     }
 
-    function printableTotal(): string {
-        const total = max() - min();
-        return truncate(total, 1).toString().replace(".", ",");
+    buildTooltipContents(index: number, value: number) {
+        return `${this.props.tooltipLabelBuilder(index)}:<br />${value} ${unit(this.props.fieldName)}`;
     }
 
-    function printableCosts(): string {
-        if (data === null) {
-            return "0";
-        }
-
-        const firstDataElement = data[0];
-
-        if (!firstDataElement) {
-            return "0";
-        }
-
-        const firstTimestamp = new Date(firstDataElement.time_stamp);
-
-        const category = getCategory(fieldName);
-
-        return costsFor(max() - min(), category, firstTimestamp).toString();
-    }
-
-    function getCategory(fieldName: DataName): PriceCategory {
-        switch (fieldName) {
-            case "gas":
-                return PriceCategory.Gas;
-            case "water":
-                return PriceCategory.Water;
-            case "stroom_totaal":
-                return PriceCategory.Stroom;
-        }
-    }
-
-    function max(): number {
-        const actualValues = dataForField().filter((value) => value !== null) as number[];
-
-        return Math.max(...actualValues);
-    }
-
-    function min(): number {
-        const actualValues = dataForField().filter((value) => value !== null) as number[];
-
-        return Math.min(...actualValues);
-    }
-
-    function truncate(value: number, precision: number): number {
-        return Math.round(value * Math.pow(10, precision)) / Math.pow(10, precision);
-    }
-
-    function dataForField(): (number | null)[] {
-        return data.map((u) => {
-            if (u) {
-                return u[fieldName];
-            } else {
-                return null;
-            }
+    dataForField(): (number | null)[] {
+        return this.props.data.map((u) => {
+            return u?.[this.props.fieldName] ?? null;
         });
     }
+}
 
-    function unit() {
-        switch (fieldName) {
-            case "gas":
-                return "m³";
-            case "stroom_totaal":
-                return "kWh";
-            case "water":
-                return "L";
-            default:
-                return "units";
-        }
+function preprocessData(data: (number | null)[], truncate: (value: number, precision: number) => number) {
+    const interpolatedData = interpolateArray(data);
+    const relativeData = convertToRelative(interpolatedData);
+    const roundedData = relativeData.map((value) => truncate(value, 3));
+
+    return roundedData;
+}
+
+function buildChartTitle(
+    label: string,
+    usage: number,
+    fieldName: UsageField,
+    firstDataElement: UsageData | null
+): string {
+    return `${label}: ${printableTotal(usage)} ${unit(fieldName)} (${printableCosts(
+        usage,
+        fieldName,
+        firstDataElement
+    )})`;
+}
+
+// TODO: Extract method 'usageThisPeriod' so we only have to do the isNotNull filter once?
+function printableTotal(usage: number): string {
+    return truncate(usage, 1).toString().replace(".", ",");
+}
+
+function printableCosts(usage: number, fieldName: UsageField, firstDataElement: UsageData | null): string {
+    if (!firstDataElement) {
+        return "0";
     }
 
-    function buildTicks(dataCount: number): number[] {
-        const result = [];
+    const firstTimestamp = new Date(firstDataElement.time_stamp);
 
-        for (let i = 1; i <= dataCount; i += 2) {
-            result.push(i);
-        }
+    const category = getCategory(fieldName);
 
-        if (xOffset === "on_value" && result[result.length - 1] === dataCount - 1) {
-            result[result.length - 1] = dataCount;
-        }
+    return costsFor(usage, category, firstTimestamp).toString();
+}
 
-        return result;
+function getCategory(fieldName: UsageField): PriceCategory {
+    switch (fieldName) {
+        case "gas":
+            return PriceCategory.Gas;
+        case "water":
+            return PriceCategory.Water;
+        case "stroom":
+            return PriceCategory.Stroom;
     }
+}
 
-    return (
-        <div>
-            <svg id={`chart_${Math.floor(Math.random() * 1000)}`} ref={ref}></svg>
-        </div>
-    );
+function isNotNull<T>(x: T | null | undefined): x is T {
+    return x !== null && x !== undefined;
+}
+
+function truncate(value: number, precision: number): number {
+    return Math.round(value * Math.pow(10, precision)) / Math.pow(10, precision);
+}
+
+function unit(fieldName: UsageField) {
+    switch (fieldName) {
+        case "gas":
+            return "m³";
+        case "stroom":
+            return "kWh";
+        case "water":
+            return "L";
+        default:
+            return assertNever(fieldName);
+    }
+}
+
+function buildTicks(dataCount: number): string[] {
+    return d3.range(1, dataCount + 1, 2).map((el) => el.toString());
+}
+
+function addChartTitle(svg: d3.Selection<d3.BaseType, unknown, HTMLElement, any>) {
+    const middleOfChart = (padding.left + axisWidth + (width - padding.right)) / 2;
+
+    svg.append("text")
+        .attr("class", "chartTitle")
+        .attr("x", middleOfChart)
+        .attr("y", padding.top / 2)
+        .style("text-anchor", "middle")
+        .style("font-style", "italic");
+}
+
+function showTooltip(contents: string, event: any) {
+    const tooltip = d3.select("#tooltip");
+
+    tooltip
+        .html(contents)
+        .style("left", event.pageX + 20 + "px")
+        .style("top", event.pageY - 58 + "px")
+        .style("opacity", 1);
 }

@@ -1,15 +1,16 @@
-import { ChartData } from "chart.js";
-import Chart from "chart.js/auto";
-import { observer } from "mobx-react";
+import * as d3 from "d3";
 import * as React from "react";
+import { useEffect } from "react";
 
-import { Bar } from "react-chartjs-2";
+import { observer } from "mobx-react";
+
+import { Color } from "../lib/Colors";
 
 import { RecentUsageGraphsStore } from "../stores/RecentUsageGraphsStore";
 
 const RecentUsageGraphs = observer(
     class RecentUsageGraphs extends React.Component {
-        store: RecentUsageGraphsStore;
+        private readonly store: RecentUsageGraphsStore;
 
         constructor(props: {}) {
             super(props);
@@ -18,157 +19,87 @@ const RecentUsageGraphs = observer(
         }
 
         componentDidMount() {
-            fetch("/api/energy/recent", { credentials: "include" })
-                .then((response) => {
-                    if (response.status === 200) {
-                        return response.json();
-                    } else {
-                        return [];
-                    }
-                })
-                .then((json) => {
-                    this.store.setData(json);
-                });
+            this.store.fetchData();
         }
 
         render() {
             return (
-                <div className="recent-UsageData">
-                    <div className="recent-usage-graph">
-                        <Bar type="bar" data={this.stroomChartData()} options={this.chartOptions(this.stroomYAxis())} />
-                        <Bar type="bar" data={this.waterChartData()} options={this.chartOptions(this.waterYAxis())} />
-                    </div>
+                <div className="recentUsageGraphs">
+                    <RecentUsageGraph id="recentStroom" store={this.store} field={"stroom"} color={Color.stroom} />
+                    <RecentUsageGraph id="recentWater" store={this.store} field={"water"} color={Color.water} />
                 </div>
             );
         }
-
-        stroomChartData(): ChartData {
-            return {
-                labels: this.store.labels(),
-                datasets: [
-                    {
-                        label: "Stroom",
-                        data: this.store.stroomData(),
-                        fill: false,
-                        borderColor: "#f0ad4e",
-                        borderWidth: 1.5,
-                        pointRadius: 0,
-                        yAxisID: "stroom"
-                    }
-                ]
-            };
-        }
-
-        waterChartData(): ChartData {
-            return {
-                labels: this.store.labels(),
-                datasets: [
-                    {
-                        label: "Water",
-                        data: this.store.waterData(),
-                        fill: false,
-                        borderColor: "#428bca",
-                        borderWidth: 1.5,
-                        pointRadius: 0,
-                        yAxisID: "water"
-                    }
-                ]
-            };
-        }
-
-        // TODO: any => ChartScales , ChartOptions
-        chartOptions(yAxis: any): any {
-            let lastItemHour = "";
-
-            // These anys are also in the typings provided for Chartjs
-            // and are unused anyway.
-            const tickCallback = (value: string, _index: any, _values: any) => {
-                const itemHour = value.slice(0, 2);
-
-                if (itemHour !== lastItemHour) {
-                    lastItemHour = itemHour;
-                    return itemHour;
-                }
-
-                return "";
-            };
-
-            return {
-                maintainAspectRatio: false,
-                scales: {
-                    xAxes: [
-                        {
-                            gridLines: {
-                                display: true
-                            },
-                            ticks: {
-                                callback: tickCallback,
-                                autoSkip: false,
-                                display: true
-                            }
-                        }
-                    ],
-                    yAxes: [yAxis]
-                },
-
-                tooltips: {
-                    callbacks: {
-                        // TODO: Any => ChartTooltipItem
-                        title: (item: any[], data: ChartData) => {
-                            if (!data.labels) return "";
-
-                            const index = item[0].index;
-
-                            if (!index) return "";
-
-                            // TODO: any
-                            const timeStamp = data.labels[index] as any;
-
-                            return timeStamp?.toString() || "";
-                        }
-                    }
-                }
-            };
-        }
-
-        stroomYAxis(): Chart.ChartScales & { id: string; title: string } {
-            return {
-                id: "stroom",
-                title: "Stroom",
-                position: "left",
-                gridLines: {
-                    display: false
-                },
-                ticks: {
-                    display: true,
-                    min: 0
-                },
-                scaleLabel: {
-                    display: true,
-                    labelString: "Stroom (Wh)"
-                }
-            };
-        }
-
-        waterYAxis(): Chart.ChartScales & { id: string; title: string } {
-            return {
-                id: "water",
-                title: "Water",
-                position: "left",
-                gridLines: {
-                    display: true
-                },
-                ticks: {
-                    display: true,
-                    min: 0
-                },
-                scaleLabel: {
-                    display: true,
-                    labelString: "Water (L)"
-                }
-            };
-        }
     }
 );
+
+type GraphProps = {
+    id: string;
+    store: RecentUsageGraphsStore;
+    field: "stroom" | "water";
+    color: string;
+};
+
+const RecentUsageGraph = observer(function RecentUsageGraph({ id, store, field, color }: GraphProps) {
+    const width = 350;
+    const height = 250;
+
+    const padding = {
+        top: 10,
+        right: 10,
+        bottom: 20,
+        left: 40
+    };
+
+    const data = field === "stroom" ? store.stroomData() : store.waterData();
+    const labels = store.labels();
+
+    useEffect(() => {
+        const yScale = d3
+            .scaleLinear()
+            .domain([0, d3.max(data) ?? 1])
+            .range([height - padding.bottom, padding.top]);
+
+        const xScale = d3
+            .scaleBand()
+            .domain(d3.range(0, labels.length - 1).map((n) => n.toString()))
+            .range([padding.left, width - padding.right])
+            .padding(0.15);
+
+        const xAxis = d3.axisBottom(xScale).tickFormat((_val, i) => (i % 2 === 0 ? labels[i] : ""));
+        const yAxis = d3.axisLeft(yScale);
+
+        const svg = d3
+            .select("#" + id)
+            .attr("width", width)
+            .attr("height", height)
+            .style("background-color", "white");
+
+        svg.selectAll("rect")
+            .data(data)
+            .join("rect")
+            .attr("x", (_el, i) => xScale(i.toString()) ?? 0)
+            .attr("y", (el) => yScale(el))
+            .attr("width", xScale.bandwidth())
+            .attr("height", (el) => height - padding.bottom - yScale(el))
+            .attr("fill", color);
+
+        svg.select("g.x-axis").remove();
+
+        svg.append("g")
+            .attr("class", "x-axis")
+            .call(xAxis)
+            .attr("transform", `translate(0, ${height - padding.bottom})`);
+
+        svg.select("g.y-axis").remove();
+        svg.append("g").attr("class", "y-axis").call(yAxis).attr("transform", `translate(${padding.left}, 0)`);
+    });
+
+    return (
+        <div>
+            <svg id={id} />
+        </div>
+    );
+});
 
 export { RecentUsageGraphs };
