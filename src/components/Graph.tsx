@@ -66,7 +66,7 @@ export class Graph extends React.Component<Props> {
     render() {
         return (
             <div>
-                <svg id={`chart_${Math.floor(Math.random() * 1000)}`} ref={this.elementRef}>
+                <svg id={`chart_${this.props.fieldName}`} ref={this.elementRef}>
                     <g className="xAxis" />
                     <g className="yAxis" />
                     <g className="gridLines" />
