@@ -70,6 +70,7 @@ export class Graph extends React.Component<Props> {
                     <g className="xAxis" />
                     <g className="yAxis" />
                     <g className="gridLines" />
+                    <g className="values" />
                 </svg>
             </div>
         );
@@ -151,7 +152,8 @@ export class Graph extends React.Component<Props> {
     }
 
     private drawBars(svg: d3.Selection<d3.BaseType, unknown, HTMLElement, any>, relativeData: number[]) {
-        svg.selectAll("rect")
+        svg.select("g.values")
+            .selectAll("rect")
             .data(relativeData)
             .join(
                 (enter) =>
