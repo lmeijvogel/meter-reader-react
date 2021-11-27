@@ -75,7 +75,7 @@ export class Graph extends React.Component<Props> {
         );
     }
 
-    initializeGraph() {
+    private initializeGraph() {
         const id = this.elementRef.current!.id;
 
         this.svg = d3
@@ -87,7 +87,7 @@ export class Graph extends React.Component<Props> {
         addChartTitle(this.svg);
     }
 
-    renderGraph(svg: d3.Selection<d3.BaseType, unknown, HTMLElement, any>) {
+    private renderGraph(svg: d3.Selection<d3.BaseType, unknown, HTMLElement, any>) {
         const relativeData = preprocessData(this.dataForField(), truncate);
 
         const domain = d3
@@ -102,6 +102,7 @@ export class Graph extends React.Component<Props> {
         this.drawGridLines(svg);
         this.drawBars(svg, relativeData);
 
+    private renderChartTitle(usage: number, extraText?: string) {
         const firstDataElement = this.props.data[0];
 
         svg.select(".chartTitle").text(
