@@ -16,9 +16,19 @@ type Props = {
     maxY: number;
     fieldName: UsageField;
     color: string;
+    colorIntense: string;
     onClick: (index: number) => void;
     tooltipLabelBuilder: (title: number) => string;
     xOffset: GraphXOffset;
+};
+
+type DragSelectionData = {
+    selectionStartPx: number;
+    selectionEndPx: number;
+
+    previousSelectionStartBand: number | null;
+    previousSelectionEndBand: number | null;
+    previousSelectionRelevantIndexes: number[];
 };
 
 const width = 480;
@@ -39,15 +49,30 @@ export class Graph extends React.Component<Props> {
     private svg: d3.Selection<d3.BaseType, unknown, HTMLElement, any> | null = null;
 
     private readonly scaleX: d3.ScaleBand<string>;
+    /* When the user drags to select a number of bars,
+     * it's necessary to find the bars corresponding to the
+     * coordinates on-screen. Sadly, the BandScale that we use for
+     * positioning the bars does not have an `inverse(x)` method,
+     * so we build a second (linear) scale that matches the BandScale
+     * and use that for finding the current bar for given x-coordinates.
+     */
+    private readonly scaleXForInversion: d3.ScaleLinear<number, number, never>;
     private readonly xAxis: d3.Axis<string>;
 
     private readonly scaleY: d3.ScaleLinear<number, number, never>;
     private readonly yAxis: d3.Axis<d3.NumberValue>;
 
+    private mouseIsDown = false;
+    private isDragging = false;
+    private ignoreClickEvent = false;
+
+    private dragSelectionData: DragSelectionData | null = null;
+
     constructor(props: Props) {
         super(props);
 
         this.scaleX = d3.scaleBand().padding(0.15).paddingOuter(0);
+        this.scaleXForInversion = d3.scaleLinear();
         this.xAxis = d3.axisBottom(this.scaleX.align(0));
 
         this.scaleY = d3.scaleLinear().clamp(true);
@@ -64,6 +89,7 @@ export class Graph extends React.Component<Props> {
     }
 
     render() {
+        // Values are rendered above the selection for the tooltip
         return (
             <div>
                 <svg id={`chart_${this.props.fieldName}`} ref={this.elementRef}>
@@ -71,6 +97,9 @@ export class Graph extends React.Component<Props> {
                     <g className="yAxis" />
                     <g className="gridLines" />
                     <g className="values" />
+                    <g className="selection">
+                        <rect />
+                    </g>
                 </svg>
             </div>
         );
@@ -86,48 +115,202 @@ export class Graph extends React.Component<Props> {
             .style("background-color", "white");
 
         addChartTitle(this.svg);
+
+        this.svg
+            .on("mousedown", (event) => {
+                event.preventDefault();
+                this.mouseIsDown = true;
+
+                const selectionStartPx = d3.pointer(event)[0];
+                this.dragSelectionData = {
+                    selectionStartPx: selectionStartPx,
+                    selectionEndPx: selectionStartPx,
+                    previousSelectionStartBand: null,
+                    previousSelectionEndBand: null,
+                    previousSelectionRelevantIndexes: []
+                };
+
+                this.resetBarColors();
+            })
+            .on("mousemove", (event) => {
+                event.preventDefault();
+
+                if (!this.mouseIsDown || !this.dragSelectionData) {
+                    return;
+                }
+
+                this.isDragging = true;
+                this.dragSelectionData.selectionEndPx = d3.pointer(event)[0];
+
+                const leftEdge = Math.min(
+                    this.dragSelectionData.selectionStartPx,
+                    this.dragSelectionData.selectionEndPx
+                );
+                const rightEdge = Math.max(
+                    this.dragSelectionData.selectionStartPx,
+                    this.dragSelectionData.selectionEndPx
+                );
+
+                this.svg!.select("g.selection")
+                    .select("rect")
+                    .attr("display", "block")
+                    .attr("x", leftEdge)
+                    .attr("y", padding.top)
+                    .attr("width", rightEdge - leftEdge)
+                    .attr("height", this.scaleY(0) - padding.top)
+                    .attr("fill", "rgba(128, 128, 128, 0.2)");
+
+                const startBand = Math.max(-1, this.findBandForX(leftEdge, this.props.xOffset));
+                const endBand = this.findBandForX(rightEdge, this.props.xOffset);
+
+                if (
+                    startBand !== this.dragSelectionData.previousSelectionStartBand ||
+                    endBand !== this.dragSelectionData.previousSelectionEndBand
+                ) {
+                    const relevantIndexes = this.calculateRelevantIndexesFromBands(startBand, endBand);
+
+                    const elementsToClear = d3.difference(
+                        this.dragSelectionData.previousSelectionRelevantIndexes,
+                        relevantIndexes
+                    );
+                    const elementsToFill = d3.difference(
+                        relevantIndexes,
+                        this.dragSelectionData.previousSelectionRelevantIndexes
+                    );
+
+                    const allBars = this.svg!.select("g.values").selectAll("rect");
+
+                    allBars.filter((_el, i) => elementsToClear.has(i)).attr("fill", this.props.color);
+                    allBars.filter((_el, i) => elementsToFill.has(i)).attr("fill", this.props.colorIntense);
+
+                    const total = this.calculateTotalFromBandIndexes(startBand, endBand);
+
+                    this.renderChartTitle(total);
+
+                    this.dragSelectionData.previousSelectionStartBand = startBand;
+                    this.dragSelectionData.previousSelectionEndBand = endBand;
+                    this.dragSelectionData.previousSelectionRelevantIndexes = relevantIndexes;
+                }
+            })
+            .on("mouseup", () => {
+                if (this.isDragging) {
+                    /* If the user clicks in the graph when we're not dragging, the selection should be hidden.
+                     * However, the click event also occurs after a mouseup and can't be easily prevented.
+                     *
+                     * Here, we set a variable that can be checked by the click event. The setTimeout
+                     * makes sure that it is only reset after the current event loop.
+                     */
+                    this.ignoreClickEvent = true;
+                    setTimeout(() => {
+                        this.ignoreClickEvent = false;
+                    }, 0);
+                }
+
+                this.isDragging = false;
+                this.mouseIsDown = false;
+            })
+
+            .on("click", () => {
+                if (this.ignoreClickEvent) {
+                    return;
+                }
+
+                this.svg!.select("g.selection").select("rect").attr("display", "none");
+                this.dragSelectionData = null;
+
+                this.renderChartTitle(this.totalUsage());
+                this.resetBarColors();
+            });
+    }
+
+    private resetBarColors() {
+        this.svg!.select("g.values").selectAll("rect").attr("fill", this.props.color);
+    }
+
+    private calculateRelevantIndexesFromBands(startBand: number, endBand: number) {
+        if (startBand === -1 && endBand === -1) {
+            return [];
+        }
+
+        return d3.range(startBand - 1, endBand);
+    }
+
+    private calculateTotalFromBandIndexes(startBand: number, endBand: number) {
+        const relevantIndexes = this.calculateRelevantIndexesFromBands(startBand, endBand);
+
+        return relevantIndexes.reduce((sum, index) => sum + this.processedData[index], 0);
+    }
+
+    private findBandForX(x: number, xOffset: GraphXOffset) {
+        const factor = this.scaleXForInversion.invert(x) - 1;
+
+        const numberOfBands = this.scaleX.domain().length;
+
+        const interpolator = d3.interpolate(1, numberOfBands);
+
+        const value = interpolator(factor);
+
+        const offset = xOffset === "between_values" ? 1 : 0;
+
+        return Math.floor(value - offset);
     }
 
     private renderGraph(svg: d3.Selection<d3.BaseType, unknown, HTMLElement, any>) {
-        const relativeData = preprocessData(this.dataForField(), truncate);
+        const domainNumeric = d3.range(1, this.processedData.length + 1);
 
         const domain = d3
-            .range(this.props.xOffset === "between_values" ? 0 : 1, relativeData.length + 1, 1)
+            .range(this.props.xOffset === "between_values" ? 0 : 1, this.processedData.length + 1, 1)
             .map((el) => el.toString());
 
         this.scaleX.domain(domain).range([padding.left + axisWidth, width - padding.right]);
+        this.scaleXForInversion
+            .domain(domainNumeric)
+            .range([padding.left + axisWidth, width - padding.right - padding.left]);
         this.scaleY.domain([0, this.props.maxY]).range([height - padding.bottom - axisHeight, padding.top]);
 
-        this.updateAxes(svg, relativeData);
+        this.updateAxes(svg);
 
         this.drawGridLines(svg);
-        this.drawBars(svg, relativeData);
+        this.drawBars(svg, this.processedData);
+
+        this.renderChartTitle(this.totalUsage());
+    }
 
     private renderChartTitle(usage: number, extraText?: string) {
         const firstDataElement = this.props.data[0];
 
-        svg.select(".chartTitle").text(
-            buildChartTitle(this.props.label, this.totalUsage(), this.props.fieldName, firstDataElement)
-        );
+        const chartTitle = buildChartTitle(this.props.label, usage, this.props.fieldName, firstDataElement);
+        this.svg!.select(".chartTitle").text(extraText ? `${chartTitle} (${extraText})` : chartTitle);
     }
 
-    clickBar = ({ target }: { target: SVGRectElement }) => {
+    private clickBar = ({ target }: { target: SVGRectElement }) => {
         const index = parseInt(target.attributes.getNamedItem("index")!.value, 10);
         this.props.onClick(index);
     };
 
-    showTooltip = (event: any, value: number) => {
+    private showTooltip = (event: any, value: number) => {
+        if (this.mouseIsDown) {
+            return;
+        }
+
         const index = parseInt(event.target.attributes.getNamedItem("index")!.value, 10);
-        showTooltip(this.buildTooltipContents(index, value), event);
-    };
-
-    hideTooltip = () => {
+        const contents = this.buildTooltipContents(index, value);
         const tooltip = d3.select("#tooltip");
-        tooltip.style("opacity", 0);
+
+        tooltip
+            .html(`${contents} - ${index}`)
+            .style("left", event.pageX + 20 + "px")
+            .style("top", event.pageY - 58 + "px")
+            .style("display", "block");
     };
 
-    private updateAxes(svg: d3.Selection<d3.BaseType, unknown, HTMLElement, any>, relativeData: number[]) {
-        this.xAxis.tickValues(buildTicks(relativeData.length));
+    private hideTooltip = () => {
+        const tooltip = d3.select("#tooltip");
+        tooltip.style("display", "none");
+    };
+
+    private updateAxes(svg: d3.Selection<d3.BaseType, unknown, HTMLElement, any>) {
+        this.xAxis.tickValues(buildTicks(this.processedData.length));
 
         svg.select(".xAxis")
             .attr("transform", `translate(0, ${this.scaleY(0)})`)
@@ -137,7 +320,7 @@ export class Graph extends React.Component<Props> {
             .call(this.yAxis as any);
     }
 
-    drawGridLines(svg: d3.Selection<d3.BaseType, unknown, HTMLElement, any>) {
+    private drawGridLines(svg: d3.Selection<d3.BaseType, unknown, HTMLElement, any>) {
         const yTickValues = this.yAxis.tickValues() || this.scaleY.ticks();
         svg.select("g.gridLines")
             .selectAll("line")
@@ -155,69 +338,49 @@ export class Graph extends React.Component<Props> {
         svg.select("g.values")
             .selectAll("rect")
             .data(relativeData)
-            .join(
-                (enter) =>
-                    enter
-                        .append("rect")
-                        .on("click", this.clickBar)
-                        .on("mouseenter", this.showTooltip)
-                        .on("mouseleave", this.hideTooltip)
-                        .attr("width", this.scaleX.bandwidth())
+            .join("rect")
+            .on("click", this.clickBar)
+            .on("mouseenter", this.showTooltip)
+            .on("mouseleave", this.hideTooltip)
 
-                        .attr("y", (el) => this.scaleY(el))
-                        .attr("height", (el) => this.scaleY(0) - this.scaleY(el))
-                        .attr("x", (_val, i) => this.calculateBarXPosition(i) + this.scaleX.bandwidth() * 1.15)
-
-                        .transition()
-                        .duration(500)
-                        .attr("x", (_val, i) => this.calculateBarXPosition(i))
-                        .selection(),
-                (update) =>
-                    update
-                        .on("click", this.clickBar)
-                        .transition()
-                        .duration(500)
-                        .attr("y", (el) => this.scaleY(el))
-                        .attr("height", (el) => this.scaleY(0) - this.scaleY(el))
-                        .attr("x", (_val, i) => this.calculateBarXPosition(i))
-                        .attr("width", this.scaleX.bandwidth()),
-
-                (exit) => exit.remove()
-            )
+            .attr("y", (el) => this.scaleY(el))
+            .attr("height", (el) => this.scaleY(0) - this.scaleY(el))
+            .attr("x", (_val, i) => this.calculateBarXPosition(i))
+            .attr("width", this.scaleX.bandwidth())
             .attr("fill", this.props.color)
             .attr("index", (_d, i) => i);
     }
 
-    totalUsage() {
+    private totalUsage() {
         const actualValues = this.dataForField().filter(isNotNull);
 
         return Math.max(...actualValues) - Math.min(...actualValues);
     }
 
-    calculateBarXPosition(i: number) {
+    private calculateBarXPosition(i: number) {
         const shiftBars = this.props.xOffset === "between_values" ? this.scaleX.bandwidth() / 2 : 0;
         const pos = this.scaleX((i + 1).toString());
 
         return !!pos ? pos - shiftBars : 0;
     }
 
-    buildTooltipContents(index: number, value: number) {
+    private buildTooltipContents(index: number, value: number) {
         return `${this.props.tooltipLabelBuilder(index)}:<br />${value} ${unit(this.props.fieldName)}`;
     }
 
-    dataForField(): (number | null)[] {
+    private dataForField(): (number | null)[] {
         return this.props.data.map((u) => {
             return u?.[this.props.fieldName] ?? null;
         });
     }
-}
 
-function preprocessData(data: (number | null)[], truncate: (value: number, precision: number) => number) {
-    const interpolatedData = interpolateArray(data);
-    const relativeData = convertToRelative(interpolatedData);
-    const roundedData = relativeData.map((value) => truncate(value, 3));
+    private get processedData(): number[] {
+        const interpolatedData = interpolateArray(this.dataForField());
+        const relativeData = convertToRelative(interpolatedData);
+        const roundedData = relativeData.map((value) => truncate(value, 3));
 
-    return roundedData;
+        return roundedData;
+    }
 }
 
 function buildChartTitle(
@@ -233,7 +396,6 @@ function buildChartTitle(
     )})`;
 }
 
-// TODO: Extract method 'usageThisPeriod' so we only have to do the isNotNull filter once?
 function printableTotal(usage: number): string {
     return truncate(usage, 1).toString().replace(".", ",");
 }
@@ -295,14 +457,4 @@ function addChartTitle(svg: d3.Selection<d3.BaseType, unknown, HTMLElement, any>
         .attr("y", padding.top / 2)
         .style("text-anchor", "middle")
         .style("font-style", "italic");
-}
-
-function showTooltip(contents: string, event: any) {
-    const tooltip = d3.select("#tooltip");
-
-    tooltip
-        .html(contents)
-        .style("left", event.pageX + 20 + "px")
-        .style("top", event.pageY - 58 + "px")
-        .style("opacity", 1);
 }
