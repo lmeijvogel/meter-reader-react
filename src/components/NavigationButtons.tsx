@@ -22,7 +22,7 @@ export const NavigationButtons = ({ enabled, periodDescription, onSelect }: IPro
     const todayButton = <NavigationButton label="Today" onClick={() => newPeriod(today)} enabled={enabled} />;
 
     return (
-        <div className="container">
+        <div className="NavigationButtonContainer">
             <div className="row">
                 <div className="column column-md-50 column-sm-100">
                     <NavigationButton

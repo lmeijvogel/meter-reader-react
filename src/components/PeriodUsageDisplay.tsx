@@ -32,7 +32,7 @@ const PeriodUsageDisplay = observer(({ dataProvider, enabled, onSelect }: Props)
     const data = spreadData(dataProvider.periodUsage, dataProvider.dataRange);
 
     return (
-        <div className={"PeriodUsageDisplay" + (enabled ? "" : " disabled")}>
+        <div className={"periodUsageDisplay" + (enabled ? "" : " disabled")}>
             <Graph
                 label="Gas"
                 data={data}
@@ -55,19 +55,17 @@ const PeriodUsageDisplay = observer(({ dataProvider, enabled, onSelect }: Props)
                 tooltipLabelBuilder={dataProvider.tooltipLabel}
                 xOffset={dataProvider.periodDescription.xOffset}
             />
-            {
-                <Graph
-                    label="Water"
-                    data={data}
-                    maxY={dataProvider.maxWaterY}
-                    fieldName="water"
-                    color={Color.water}
-                    colorIntense={Color.waterIntense}
-                    onClick={onClick}
-                    tooltipLabelBuilder={dataProvider.tooltipLabel}
-                    xOffset={dataProvider.periodDescription.xOffset}
-                />
-            }
+            <Graph
+                label="Water"
+                data={data}
+                maxY={dataProvider.maxWaterY}
+                fieldName="water"
+                color={Color.water}
+                colorIntense={Color.waterIntense}
+                onClick={onClick}
+                tooltipLabelBuilder={dataProvider.tooltipLabel}
+                xOffset={dataProvider.periodDescription.xOffset}
+            />
         </div>
     );
 });

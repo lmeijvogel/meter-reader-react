@@ -11,9 +11,10 @@ type IProps = {
     loadingState: LoadingState;
     periodSelected: (periodDescription: PeriodDescription, skipPushState: boolean) => void;
     dataProvider: PeriodDataProvider;
+    onTitleClick: () => void;
 };
 
-const UsageGraphs = observer(({ loadingState, periodSelected, dataProvider }: IProps) => {
+const UsageGraphs = observer(({ loadingState, periodSelected, dataProvider, onTitleClick }: IProps) => {
     const onSelect = (periodDescription: PeriodDescription, skipPushState = false) => {
         periodSelected(periodDescription, skipPushState);
     };
@@ -25,13 +26,13 @@ const UsageGraphs = observer(({ loadingState, periodSelected, dataProvider }: IP
         const { periodDescription } = dataProvider;
 
         return (
-            <div>
-                <h2>{periodDescription.toTitle()}</h2>
+            <>
+                <h2 onClick={onTitleClick}>{periodDescription.toTitle()}</h2>
 
                 <PeriodUsageDisplay dataProvider={dataProvider} onSelect={onSelect} enabled={enabled} />
 
                 <NavigationButtons periodDescription={periodDescription} onSelect={onSelect} enabled={enabled} />
-            </div>
+            </>
         );
     }
 

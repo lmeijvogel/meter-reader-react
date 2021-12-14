@@ -1,6 +1,37 @@
-import { PeriodDescription, DayDescription, MonthDescription, YearDescription } from "../models/PeriodDescription";
+import { DisplayState } from "../lib/DisplayState";
+import { DayDescription, MonthDescription, PeriodDescription, YearDescription } from "../models/PeriodDescription";
 
-export function parseLocationBar(path: string): PeriodDescription {
+export function parseLocationBar(path: string, defaultState: DisplayState): DisplayState {
+    if (path.match(/\/recent/)) {
+        return {
+            view: "recent"
+        };
+    }
+
+    const period = tryMatchPeriod(path);
+
+    if (period) {
+        return {
+            view: "period",
+            period: period
+        };
+    }
+
+    return defaultState;
+}
+
+export function createUrl(displayState: DisplayState): string {
+    switch (displayState.view) {
+        case "period":
+            return displayState.period.toUrl();
+        case "recent":
+            return "/recent";
+        case "radial":
+            return `/radial/${displayState.year}/${displayState.week}`;
+    }
+}
+
+function tryMatchPeriod(path: string): PeriodDescription | null {
     const dayMatch = path.match(/\/day\/(\d+)\/(\d+)\/(\d+)/);
 
     if (dayMatch) {
@@ -19,7 +50,5 @@ export function parseLocationBar(path: string): PeriodDescription {
         return new YearDescription(parseInt(yearMatch[1], 10));
     }
 
-    const date = new Date();
-
-    return new MonthDescription(date.getFullYear(), date.getMonth());
+    return null;
 }

@@ -91,17 +91,15 @@ export class Graph extends React.Component<Props> {
     render() {
         // Values are rendered above the selection for the tooltip
         return (
-            <div>
-                <svg id={`chart_${this.props.fieldName}`} ref={this.elementRef}>
-                    <g className="xAxis" />
-                    <g className="yAxis" />
-                    <g className="gridLines" />
-                    <g className="values" />
-                    <g className="selection">
-                        <rect />
-                    </g>
-                </svg>
-            </div>
+            <svg className="periodUsageGraph" id={`chart_${this.props.fieldName}`} ref={this.elementRef}>
+                <g className="xAxis" />
+                <g className="yAxis" />
+                <g className="gridLines" />
+                <g className="values" />
+                <g className="selection">
+                    <rect />
+                </g>
+            </svg>
         );
     }
 
@@ -110,104 +108,51 @@ export class Graph extends React.Component<Props> {
 
         this.svg = d3
             .select("#" + id)
-            .attr("width", width)
-            .attr("height", height)
+            .attr("viewBox", `0 0 ${width} ${height}`)
             .style("background-color", "white");
 
         addChartTitle(this.svg);
 
+        this.svg.on("touchstart", (event: TouchEvent) => {
+            if (event.touches.length === 1) {
+                event.preventDefault();
+
+                const touch = event.touches.item(0);
+
+                if (!!touch) {
+                    this.onDragStart(touch);
+                }
+            }
+        });
         this.svg
             .on("mousedown", (event) => {
                 event.preventDefault();
-                this.mouseIsDown = true;
 
-                const selectionStartPx = d3.pointer(event)[0];
-                this.dragSelectionData = {
-                    selectionStartPx: selectionStartPx,
-                    selectionEndPx: selectionStartPx,
-                    previousSelectionStartBand: null,
-                    previousSelectionEndBand: null,
-                    previousSelectionRelevantIndexes: []
-                };
+                this.onDragStart(event);
+            })
 
-                this.resetBarColors();
+            .on("touchmove", (event: TouchEvent) => {
+                if (event.touches.length === 1) {
+                    event.preventDefault();
+
+                    const item = event.touches.item(0);
+
+                    if (!!item) {
+                        this.onDragMove(item);
+                    }
+                }
             })
             .on("mousemove", (event) => {
                 event.preventDefault();
 
-                if (!this.mouseIsDown || !this.dragSelectionData) {
-                    return;
-                }
-
-                this.isDragging = true;
-                this.dragSelectionData.selectionEndPx = d3.pointer(event)[0];
-
-                const leftEdge = Math.min(
-                    this.dragSelectionData.selectionStartPx,
-                    this.dragSelectionData.selectionEndPx
-                );
-                const rightEdge = Math.max(
-                    this.dragSelectionData.selectionStartPx,
-                    this.dragSelectionData.selectionEndPx
-                );
-
-                this.svg!.select("g.selection")
-                    .select("rect")
-                    .attr("display", "block")
-                    .attr("x", leftEdge)
-                    .attr("y", padding.top)
-                    .attr("width", rightEdge - leftEdge)
-                    .attr("height", this.scaleY(0) - padding.top)
-                    .attr("fill", "rgba(128, 128, 128, 0.2)");
-
-                const startBand = Math.max(-1, this.findBandForX(leftEdge, this.props.xOffset));
-                const endBand = this.findBandForX(rightEdge, this.props.xOffset);
-
-                if (
-                    startBand !== this.dragSelectionData.previousSelectionStartBand ||
-                    endBand !== this.dragSelectionData.previousSelectionEndBand
-                ) {
-                    const relevantIndexes = this.calculateRelevantIndexesFromBands(startBand, endBand);
-
-                    const elementsToClear = d3.difference(
-                        this.dragSelectionData.previousSelectionRelevantIndexes,
-                        relevantIndexes
-                    );
-                    const elementsToFill = d3.difference(
-                        relevantIndexes,
-                        this.dragSelectionData.previousSelectionRelevantIndexes
-                    );
-
-                    const allBars = this.svg!.select("g.values").selectAll("rect");
-
-                    allBars.filter((_el, i) => elementsToClear.has(i)).attr("fill", this.props.color);
-                    allBars.filter((_el, i) => elementsToFill.has(i)).attr("fill", this.props.colorIntense);
-
-                    const total = this.calculateTotalFromBandIndexes(startBand, endBand);
-
-                    this.renderChartTitle(total);
-
-                    this.dragSelectionData.previousSelectionStartBand = startBand;
-                    this.dragSelectionData.previousSelectionEndBand = endBand;
-                    this.dragSelectionData.previousSelectionRelevantIndexes = relevantIndexes;
-                }
+                this.onDragMove(event);
             })
-            .on("mouseup", () => {
-                if (this.isDragging) {
-                    /* If the user clicks in the graph when we're not dragging, the selection should be hidden.
-                     * However, the click event also occurs after a mouseup and can't be easily prevented.
-                     *
-                     * Here, we set a variable that can be checked by the click event. The setTimeout
-                     * makes sure that it is only reset after the current event loop.
-                     */
-                    this.ignoreClickEvent = true;
-                    setTimeout(() => {
-                        this.ignoreClickEvent = false;
-                    }, 0);
-                }
+            .on("touchend", () => {
+                this.onDragEnd();
+            })
 
-                this.isDragging = false;
-                this.mouseIsDown = false;
+            .on("mouseup", () => {
+                this.onDragEnd();
             })
 
             .on("click", () => {
@@ -222,6 +167,92 @@ export class Graph extends React.Component<Props> {
                 this.resetBarColors();
             });
     }
+
+    private onDragStart = (item: Touch) => {
+        this.mouseIsDown = true;
+
+        const selectionStartPx = d3.pointer(item)[0];
+        this.dragSelectionData = {
+            selectionStartPx: selectionStartPx,
+            selectionEndPx: selectionStartPx,
+            previousSelectionStartBand: null,
+            previousSelectionEndBand: null,
+            previousSelectionRelevantIndexes: []
+        };
+
+        this.resetBarColors();
+    };
+
+    private onDragMove = (item: Touch) => {
+        if (!this.mouseIsDown || !this.dragSelectionData) {
+            return;
+        }
+
+        this.isDragging = true;
+        this.dragSelectionData.selectionEndPx = d3.pointer(item)[0];
+
+        const leftEdge = Math.min(this.dragSelectionData.selectionStartPx, this.dragSelectionData.selectionEndPx);
+        const rightEdge = Math.max(this.dragSelectionData.selectionStartPx, this.dragSelectionData.selectionEndPx);
+
+        this.svg!.select("g.selection")
+            .select("rect")
+            .attr("display", "block")
+            .attr("x", leftEdge)
+            .attr("y", padding.top)
+            .attr("width", rightEdge - leftEdge)
+            .attr("height", this.scaleY(0) - padding.top)
+            .attr("fill", "rgba(128, 128, 128, 0.2)");
+
+        const startBand = Math.max(-1, this.findBandForX(leftEdge, this.props.xOffset));
+        const endBand = this.findBandForX(rightEdge, this.props.xOffset);
+
+        if (
+            startBand !== this.dragSelectionData.previousSelectionStartBand ||
+            endBand !== this.dragSelectionData.previousSelectionEndBand
+        ) {
+            const relevantIndexes = this.calculateRelevantIndexesFromBands(startBand, endBand);
+
+            const elementsToClear = d3.difference(
+                this.dragSelectionData.previousSelectionRelevantIndexes,
+                relevantIndexes
+            );
+            const elementsToFill = d3.difference(
+                relevantIndexes,
+                this.dragSelectionData.previousSelectionRelevantIndexes
+            );
+
+            const allBars = this.svg!.select("g.values").selectAll("rect");
+
+            allBars.filter((_el, i) => elementsToClear.has(i)).attr("fill", this.props.color);
+            allBars.filter((_el, i) => elementsToFill.has(i)).attr("fill", this.props.colorIntense);
+
+            const total = this.calculateTotalFromBandIndexes(startBand, endBand);
+
+            this.renderChartTitle(total);
+
+            this.dragSelectionData.previousSelectionStartBand = startBand;
+            this.dragSelectionData.previousSelectionEndBand = endBand;
+            this.dragSelectionData.previousSelectionRelevantIndexes = relevantIndexes;
+        }
+    };
+
+    private onDragEnd = () => {
+        if (this.isDragging) {
+            /* If the user clicks in the graph when we're not dragging, the selection should be hidden.
+             * However, the click event also occurs after a mouseup and can't be easily prevented.
+             *
+             * Here, we set a variable that can be checked by the click event. The setTimeout
+             * makes sure that it is only reset after the current event loop.
+             */
+            this.ignoreClickEvent = true;
+            setTimeout(() => {
+                this.ignoreClickEvent = false;
+            }, 0);
+        }
+
+        this.isDragging = false;
+        this.mouseIsDown = false;
+    };
 
     private resetBarColors() {
         this.svg!.select("g.values").selectAll("rect").attr("fill", this.props.color);
@@ -298,7 +329,7 @@ export class Graph extends React.Component<Props> {
         const tooltip = d3.select("#tooltip");
 
         tooltip
-            .html(`${contents} - ${index}`)
+            .html(contents)
             .style("left", event.pageX + 20 + "px")
             .style("top", event.pageY - 58 + "px")
             .style("display", "block");

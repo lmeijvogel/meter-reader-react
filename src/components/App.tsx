@@ -4,16 +4,18 @@ import { Component } from "react";
 
 import { AppStore } from "../stores/AppStore";
 
-import { LiveData } from "../models/LiveData";
 import { parseLocationBar } from "../helpers/LocationBarParser";
 import { CurrentUsage } from "./CurrentUsage";
 import { RecentUsageGraphs } from "./RecentUsageGraphs";
 import { UsageGraphs } from "./UsageGraphs";
 import { ActualReadings } from "./ActualReadings";
+import { RadialUsage } from "./RadialUsage/RadialUsageGraphs";
+import { RadialUsageStore } from "../stores/RadialUsageStore";
 // import {RunningUsage} from './RunningUsage';
 
 type Props = {
     store: AppStore;
+    radialUsageStore: RadialUsageStore;
 };
 
 const App = observer(
@@ -21,64 +23,65 @@ const App = observer(
         timer: any | null = null;
 
         render() {
-            const { dataProvider, liveData, loadingState, showRecentUsage } = this.props.store;
+            const { dataProvider, displayState, liveData, loadingState } = this.props.store;
 
             // <RunningUsage store={runningUsageStore} />
             // Apparently, Chart.js doesn't understand 'height' and 'maxHeight' correctly, but only handles 'width' and 'max-width'.
             // The maxWidth here corresponds to filling a single screen (vertically) on my laptop.
             return (
-                <div className="container" style={{ maxWidth: "500px" }}>
-                    <div className="row">{this.renderLiveData(liveData)}</div>
-                    <div className="row mainContent">
-                        {showRecentUsage ? (
+                <div id="mainContainer">
+                    <div>
+                        <CurrentUsage liveData={liveData} onClick={this.currentUsageClicked} />
+                    </div>
+                    <div className="mainContent">
+                        {displayState.view === "recent" ? (
                             <RecentUsageGraphs />
-                        ) : (
+                        ) : displayState.view === "period" ? (
                             <UsageGraphs
                                 loadingState={loadingState}
                                 dataProvider={dataProvider!}
-                                periodSelected={this.props.store.periodSelected}
+                                periodSelected={(period) =>
+                                    this.props.store.stateSelected({ view: "period", period: period })
+                                }
+                                onTitleClick={this.showRadialUsage}
                             />
+                        ) : (
+                            <RadialUsage store={this.props.radialUsageStore} onTitleClick={this.closeRadialUsage} />
                         )}
                     </div>
-                    {!showRecentUsage && (
-                        <div className="row">
-                            {liveData !== "Error" && liveData !== "Loading" && (
-                                <ActualReadings
-                                    stroom_dal={liveData.stroom_dal}
-                                    stroom_piek={liveData.stroom_piek}
-                                    gas={liveData.gas}
-                                />
-                            )}
-                        </div>
+                    {displayState.view === "period" && liveData !== "Error" && liveData !== "Loading" && (
+                        <ActualReadings
+                            stroom_dal={liveData.stroom_dal}
+                            stroom_piek={liveData.stroom_piek}
+                            gas={liveData.gas}
+                        />
                     )}
                 </div>
             );
         }
 
         componentDidMount() {
-            this.selectPeriodFromLocationBar();
+            this.selectViewFromLocationBar();
 
             window.onpopstate = (event: PopStateEvent) => {
-                if (event.state.period) {
-                    this.props.store.periodSelected(event.state.period, true);
+                console.log("onpopstate");
+                if (event.state) {
+                    this.props.store.stateSelectedFromHistory(event.state);
                 }
             };
 
             this.startLiveDataTimer();
+            this.retrieveLiveData();
         }
 
         componentWillUnmount() {
             this.stopLiveDataTimer();
         }
 
-        renderLiveData(liveData: LiveData | "Error" | "Loading") {
-            return <CurrentUsage liveData={liveData} onClick={this.currentUsageClicked} />;
-        }
+        selectViewFromLocationBar() {
+            const displayState = parseLocationBar(window.location.pathname, this.props.store.defaultState());
 
-        selectPeriodFromLocationBar() {
-            const period = parseLocationBar(window.location.pathname);
-
-            this.props.store.periodSelected(period, false);
+            this.props.store.stateSelected(displayState, false);
         }
 
         startLiveDataTimer() {
@@ -97,33 +100,57 @@ const App = observer(
 
             const response = await fetch("/api/energy/current", { credentials: "include" });
 
-            switch (response.status) {
-                case 200:
-                    const json = await response.json();
+            try {
+                switch (response.status) {
+                    case 200:
+                        const json = await response.json();
 
-                    store.setLiveData({
-                        id: json.id,
-                        current: json.current,
-                        gas: json.gas,
-                        stroom_dal: json.stroom_dal,
-                        stroom_piek: json.stroom_piek,
-                        water_current: json.water_current
-                    });
-                    break;
-                case 401:
-                    store.setLiveData("Error");
-                    break;
-                case 404:
-                    store.setLiveData("Error");
-                    break;
-                default:
-                    store.setLiveData("Error");
-                    break;
+                        store.setLiveData({
+                            id: json.id,
+                            current: json.current,
+                            gas: json.gas,
+                            stroom_dal: json.stroom_dal,
+                            stroom_piek: json.stroom_piek,
+                            water_current: json.water_current
+                        });
+                        break;
+                    case 401:
+                    case 404:
+                    default:
+                        store.setLiveData("Error");
+                        break;
+                }
+            } catch {
+                store.setLiveData("Error");
             }
         };
 
         currentUsageClicked = () => {
-            this.props.store.showRecentUsage = !this.props.store.showRecentUsage;
+            const currentType = this.props.store.displayState.view;
+
+            if (currentType === "period") {
+                this.props.store.stateSelected({ view: "recent" });
+            } else {
+                this.props.store.previousStateSelected();
+            }
+        };
+
+        // TODO: Way too much dependence between RadialUsageStore and AppStore.
+        showRadialUsage = () => {
+            const { radialUsageStore } = this.props;
+
+            const { displayState } = this.props.store;
+            const radialProps =
+                displayState.view === "period"
+                    ? radialUsageStore.getWeekAndYear(displayState.period.toDate())
+                    : radialUsageStore.defaultYearAndWeek();
+
+            radialUsageStore.periodSelected(radialProps.week, radialProps.year);
+            this.props.store.stateSelected({ view: "radial", ...radialProps });
+        };
+
+        closeRadialUsage = () => {
+            this.props.store.previousStateSelected();
         };
     }
 );
