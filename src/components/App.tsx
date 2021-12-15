@@ -9,13 +9,11 @@ import { ActualReadings } from "./ActualReadings";
 import { RadialUsage } from "./RadialUsage/RadialUsageGraphs";
 import { PeriodDescription } from "../models/PeriodDescription";
 import { PeriodUsageStore } from "../stores/PeriodUsageStore";
-import { RunningUsageStore } from "../stores/RunningUsageStore";
 import { RadialUsageStore } from "../stores/RadialUsageStore";
 import { LiveDataStore } from "../stores/LiveDataStore";
 
 type Props = {
     periodUsageStore: PeriodUsageStore;
-    runningUsageStore: RunningUsageStore;
     radialUsageStore: RadialUsageStore;
     liveDataStore: LiveDataStore;
 };
