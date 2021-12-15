@@ -22,7 +22,7 @@ class RadialUsageDisplay extends React.Component<Props> {
                 {["gas", "stroom", "water"].map((fieldName) => (
                     <RadialGraph key={`radial_graph_${fieldName}`} store={store} fieldName={fieldName as UsageField} />
                 ))}
-                <NavigationButtons week={store.week} year={store.year} onSelect={store.periodSelected} />
+                <NavigationButtons week={store.period.week} year={store.period.year} onSelect={store.periodSelected} />
             </div>
         );
     }
@@ -32,7 +32,7 @@ class RadialUsageDisplay extends React.Component<Props> {
     }
 
     private title(): string {
-        const { year, week } = this.props.store;
+        const { year, week } = this.props.store.period;
         const dayInMs = 60 * 60 * 24 * 1000;
 
         const startDay = getDateOfISOWeek(year, week);

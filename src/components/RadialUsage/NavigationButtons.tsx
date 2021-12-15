@@ -1,3 +1,4 @@
+import { RadialUsagePeriod } from "../../stores/RadialUsageStore";
 import { getDateOfISOWeek, getWeek, getWeekYear } from "../dateHelpers";
 import { NavigationButton } from "../NavigationButton";
 
@@ -5,7 +6,7 @@ type Props = {
     year: number;
     week: number;
 
-    onSelect: (week: number, year: number) => void;
+    onSelect: (period: RadialUsagePeriod) => void;
 };
 
 export function NavigationButtons({ year, week, onSelect }: Props) {
@@ -20,14 +21,14 @@ export function NavigationButtons({ year, week, onSelect }: Props) {
                 <div className="column column-md-50 column-sm-100">
                     <NavigationButton
                         label={`< week ${lastWeekNumber} ${lastWeekYear}`}
-                        onClick={() => onSelect(lastWeekNumber, lastWeekYear)}
+                        onClick={() => onSelect({ week: lastWeekNumber, year: lastWeekYear })}
                         enabled={true}
                     />
                 </div>
                 <div className="column column-md-50 column-sm-100">
                     <NavigationButton
                         label={`week ${nextWeekNumber} ${nextWeekYear} >`}
-                        onClick={() => onSelect(nextWeekNumber, nextWeekYear)}
+                        onClick={() => onSelect({ week: nextWeekNumber, year: nextWeekYear })}
                         enabled={true}
                     />
                 </div>

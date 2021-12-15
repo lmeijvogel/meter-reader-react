@@ -4,18 +4,15 @@ import { Component } from "react";
 
 import { AppStore } from "../stores/AppStore";
 
-import { parseLocationBar } from "../helpers/LocationBarParser";
 import { CurrentUsage } from "./CurrentUsage";
 import { RecentUsageGraphs } from "./RecentUsageGraphs";
 import { UsageGraphs } from "./UsageGraphs";
 import { ActualReadings } from "./ActualReadings";
 import { RadialUsage } from "./RadialUsage/RadialUsageGraphs";
-import { RadialUsageStore } from "../stores/RadialUsageStore";
-// import {RunningUsage} from './RunningUsage';
+import { PeriodDescription } from "../models/PeriodDescription";
 
 type Props = {
     store: AppStore;
-    radialUsageStore: RadialUsageStore;
 };
 
 const App = observer(
@@ -23,33 +20,23 @@ const App = observer(
         timer: any | null = null;
 
         render() {
-            const { dataProvider, displayState, liveData, loadingState } = this.props.store;
+            const { currentView, liveData, periodUsageStore, radialUsageStore } = this.props.store;
 
-            // <RunningUsage store={runningUsageStore} />
-            // Apparently, Chart.js doesn't understand 'height' and 'maxHeight' correctly, but only handles 'width' and 'max-width'.
-            // The maxWidth here corresponds to filling a single screen (vertically) on my laptop.
             return (
                 <div id="mainContainer">
                     <div>
                         <CurrentUsage liveData={liveData} onClick={this.currentUsageClicked} />
                     </div>
                     <div className="mainContent">
-                        {displayState.view === "recent" ? (
+                        {currentView === "recent" ? (
                             <RecentUsageGraphs />
-                        ) : displayState.view === "period" ? (
-                            <UsageGraphs
-                                loadingState={loadingState}
-                                dataProvider={dataProvider!}
-                                periodSelected={(period) =>
-                                    this.props.store.stateSelected({ view: "period", period: period })
-                                }
-                                onTitleClick={this.showRadialUsage}
-                            />
+                        ) : currentView === "period" ? (
+                            <UsageGraphs store={periodUsageStore} onTitleClick={this.showRadialUsage} />
                         ) : (
-                            <RadialUsage store={this.props.radialUsageStore} onTitleClick={this.closeRadialUsage} />
+                            <RadialUsage store={radialUsageStore} onTitleClick={this.closeRadialUsage} />
                         )}
                     </div>
-                    {displayState.view === "period" && liveData !== "Error" && liveData !== "Loading" && (
+                    {currentView === "period" && liveData !== "Error" && liveData !== "Loading" && (
                         <ActualReadings
                             stroom_dal={liveData.stroom_dal}
                             stroom_piek={liveData.stroom_piek}
@@ -61,27 +48,12 @@ const App = observer(
         }
 
         componentDidMount() {
-            this.selectViewFromLocationBar();
-
-            window.onpopstate = (event: PopStateEvent) => {
-                console.log("onpopstate");
-                if (event.state) {
-                    this.props.store.stateSelectedFromHistory(event.state);
-                }
-            };
-
             this.startLiveDataTimer();
             this.retrieveLiveData();
         }
 
         componentWillUnmount() {
             this.stopLiveDataTimer();
-        }
-
-        selectViewFromLocationBar() {
-            const displayState = parseLocationBar(window.location.pathname, this.props.store.defaultState());
-
-            this.props.store.stateSelected(displayState, false);
         }
 
         startLiveDataTimer() {
@@ -126,31 +98,27 @@ const App = observer(
         };
 
         currentUsageClicked = () => {
-            const currentType = this.props.store.displayState.view;
+            const { currentView } = this.props.store;
 
-            if (currentType === "period") {
-                this.props.store.stateSelected({ view: "recent" });
+            if (currentView === "recent") {
+                this.props.store.currentView = "period";
             } else {
-                this.props.store.previousStateSelected();
+                this.props.store.currentView = "recent";
             }
         };
 
-        // TODO: Way too much dependence between RadialUsageStore and AppStore.
-        showRadialUsage = () => {
-            const { radialUsageStore } = this.props;
+        showRadialUsage = (periodDescription: PeriodDescription) => {
+            const { radialUsageStore } = this.props.store;
 
-            const { displayState } = this.props.store;
-            const radialProps =
-                displayState.view === "period"
-                    ? radialUsageStore.getWeekAndYear(displayState.period.toDate())
-                    : radialUsageStore.defaultYearAndWeek();
+            const radialProps = radialUsageStore.getWeekAndYear(periodDescription.toDate());
 
-            radialUsageStore.periodSelected(radialProps.week, radialProps.year);
-            this.props.store.stateSelected({ view: "radial", ...radialProps });
+            radialUsageStore.periodSelected(radialProps);
+
+            this.props.store.currentView = "radial";
         };
 
         closeRadialUsage = () => {
-            this.props.store.previousStateSelected();
+            this.props.store.currentView = "period";
         };
     }
 );

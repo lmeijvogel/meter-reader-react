@@ -1,33 +1,41 @@
 import { observer } from "mobx-react";
 
-import { PeriodDataProvider } from "../models/PeriodDataProvider";
 import { PeriodDescription } from "../models/PeriodDescription";
 
 import { NavigationButtons } from "./NavigationButtons";
 import { PeriodUsageDisplay } from "./PeriodUsageDisplay";
-import { LoadingState } from "../stores/AppStore";
+import { LoadingState, PeriodUsageStore } from "../stores/PeriodUsageStore";
+import { useEffect } from "react";
 
 type IProps = {
-    loadingState: LoadingState;
-    periodSelected: (periodDescription: PeriodDescription, skipPushState: boolean) => void;
-    dataProvider: PeriodDataProvider;
-    onTitleClick: () => void;
+    store: PeriodUsageStore;
+    onTitleClick: (periodDescription: PeriodDescription) => void;
 };
 
-const UsageGraphs = observer(({ loadingState, periodSelected, dataProvider, onTitleClick }: IProps) => {
-    const onSelect = (periodDescription: PeriodDescription, skipPushState = false) => {
-        periodSelected(periodDescription, skipPushState);
+const UsageGraphs = observer(({ store, onTitleClick }: IProps) => {
+    const { loadingState, dataProvider, setPeriodDescription } = store;
+
+    useEffect(() => {
+        console.log("Initializing store");
+        store.initializeIfNecessary();
+    }, [store]);
+
+    // TODO: Not inlined below yet since we probably want to change the URL as well
+    const onSelect = (periodDescription: PeriodDescription) => {
+        setPeriodDescription(periodDescription);
     };
 
     // TODO: Will this work correctly? I think so.
     const enabled = loadingState === LoadingState.Loaded;
 
-    if (loadingState === LoadingState.Loaded) {
+    if (loadingState === LoadingState.Loaded && !!dataProvider) {
         const { periodDescription } = dataProvider;
+
+        const onClick = () => onTitleClick(periodDescription);
 
         return (
             <>
-                <h2 onClick={onTitleClick}>{periodDescription.toTitle()}</h2>
+                <h2 onClick={onClick}>{periodDescription.toTitle()}</h2>
 
                 <PeriodUsageDisplay dataProvider={dataProvider} onSelect={onSelect} enabled={enabled} />
 

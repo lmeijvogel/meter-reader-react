@@ -2,22 +2,31 @@ import { action, IObservableArray, makeAutoObservable, observable, runInAction }
 import { getWeek, getWeekYear } from "../components/dateHelpers";
 import { UsageData } from "../models/UsageData";
 
+export type RadialUsagePeriod = {
+    week: number;
+    year: number;
+};
+
 export class RadialUsageStore {
     data: IObservableArray<UsageData> = observable([]);
 
-    constructor(public week: number, public year: number) {
+    period: RadialUsagePeriod;
+    constructor() {
         makeAutoObservable(this);
+
+        this.period = this.defaultPeriod();
     }
 
-    periodSelected = action((week: number, year: number) => {
-        this.week = week;
-        this.year = year;
+    periodSelected = action((period: RadialUsagePeriod) => {
+        this.period = period;
 
         this.fetchData();
     });
 
     fetchData = async (): Promise<void> => {
-        const response = await fetch(`/api/radial/${this.year}/${this.week}.json`, { credentials: "include" });
+        const { year, week } = this.period;
+
+        const response = await fetch(`/api/radial/${year}/${week}.json`, { credentials: "include" });
 
         switch (response.status) {
             case 200:
@@ -32,16 +41,24 @@ export class RadialUsageStore {
         }
     };
 
-    defaultYearAndWeek(): { year: number; week: number } {
+    defaultPeriod(): RadialUsagePeriod {
         const today = new Date();
 
         return this.getWeekAndYear(today);
     }
 
-    getWeekAndYear(date: Date): { year: number; week: number } {
+    getWeekAndYear(date: Date): RadialUsagePeriod {
         return {
             year: getWeekYear(date),
             week: getWeek(date)
         };
+    }
+
+    serializeState(): RadialUsagePeriod {
+        return this.period;
+    }
+
+    deserializeState(state: any) {
+        return state as RadialUsagePeriod;
     }
 }
