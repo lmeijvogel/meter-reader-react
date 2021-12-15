@@ -17,85 +17,37 @@ type Props = {
 
 const App = observer(
     class App extends Component<Props> {
-        timer: any | null = null;
-
         render() {
-            const { currentView, liveData, periodUsageStore, radialUsageStore } = this.props.store;
+            const { currentView, liveDataStore, periodUsageStore, radialUsageStore } = this.props.store;
 
             return (
                 <div id="mainContainer">
                     <div>
-                        <CurrentUsage liveData={liveData} onClick={this.currentUsageClicked} />
+                        <CurrentUsage store={liveDataStore} onClick={this.currentUsageClicked} />
                     </div>
                     <div className="mainContent">
                         {currentView === "recent" ? (
                             <RecentUsageGraphs />
                         ) : currentView === "period" ? (
-                            <UsageGraphs store={periodUsageStore} onTitleClick={this.showRadialUsage} />
+                            <>
+                                <UsageGraphs store={periodUsageStore} onTitleClick={this.showRadialUsage} />
+                                <ActualReadings store={liveDataStore} />
+                            </>
                         ) : (
                             <RadialUsage store={radialUsageStore} onTitleClick={this.closeRadialUsage} />
                         )}
                     </div>
-                    {currentView === "period" && liveData !== "Error" && liveData !== "Loading" && (
-                        <ActualReadings
-                            stroom_dal={liveData.stroom_dal}
-                            stroom_piek={liveData.stroom_piek}
-                            gas={liveData.gas}
-                        />
-                    )}
                 </div>
             );
         }
 
         componentDidMount() {
-            this.startLiveDataTimer();
-            this.retrieveLiveData();
+            this.props.store.liveDataStore.startTimer();
         }
 
         componentWillUnmount() {
-            this.stopLiveDataTimer();
+            this.props.store.liveDataStore.stopTimer();
         }
-
-        startLiveDataTimer() {
-            this.timer = setInterval(this.retrieveLiveData, 3000);
-        }
-
-        stopLiveDataTimer() {
-            if (this.timer) {
-                clearInterval(this.timer);
-                this.timer = null;
-            }
-        }
-
-        retrieveLiveData = async () => {
-            const { store } = this.props;
-
-            const response = await fetch("/api/energy/current", { credentials: "include" });
-
-            try {
-                switch (response.status) {
-                    case 200:
-                        const json = await response.json();
-
-                        store.setLiveData({
-                            id: json.id,
-                            current: json.current,
-                            gas: json.gas,
-                            stroom_dal: json.stroom_dal,
-                            stroom_piek: json.stroom_piek,
-                            water_current: json.water_current
-                        });
-                        break;
-                    case 401:
-                    case 404:
-                    default:
-                        store.setLiveData("Error");
-                        break;
-                }
-            } catch {
-                store.setLiveData("Error");
-            }
-        };
 
         currentUsageClicked = () => {
             const { currentView } = this.props.store;

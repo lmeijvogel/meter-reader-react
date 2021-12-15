@@ -1,10 +1,19 @@
+import { observer } from "mobx-react";
+import { LiveDataStore } from "../stores/LiveDataStore";
+
 interface IProps {
-    stroom_dal: number;
-    stroom_piek: number;
-    gas: number;
+    store: LiveDataStore;
 }
 
-export const ActualReadings = ({ stroom_dal, stroom_piek, gas }: IProps) => {
+export const ActualReadings = observer(({ store }: IProps) => {
+    const { liveData } = store;
+
+    if (liveData === "Loading" || liveData === "Error") {
+        return null;
+    }
+
+    const { stroom, gas } = liveData;
+
     return (
         <div>
             <h3>Meterstanden</h3>
@@ -12,8 +21,7 @@ export const ActualReadings = ({ stroom_dal, stroom_piek, gas }: IProps) => {
             <table className="numeric-data">
                 <thead>
                     <tr>
-                        <th>Dal (kWh)</th>
-                        <th>Piek (kWh)</th>
+                        <th>Stroom (kWh)</th>
                         <th>
                             Gas (m<sup>3</sup>)
                         </th>
@@ -21,12 +29,11 @@ export const ActualReadings = ({ stroom_dal, stroom_piek, gas }: IProps) => {
                 </thead>
                 <tbody>
                     <tr>
-                        <td>{stroom_dal}</td>
-                        <td>{stroom_piek}</td>
+                        <td>{stroom}</td>
                         <td>{gas}</td>
                     </tr>
                 </tbody>
             </table>
         </div>
     );
-};
+});

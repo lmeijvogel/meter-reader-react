@@ -1,24 +1,20 @@
 import { makeAutoObservable } from "mobx";
-import { LiveData } from "../models/LiveData";
 import { RunningUsageStore } from "./RunningUsageStore";
 import { PeriodUsageStore } from "./PeriodUsageStore";
 import { RadialUsageStore } from "./RadialUsageStore";
+import { LiveDataStore } from "./LiveDataStore";
 
 export type CurrentView = "period" | "recent" | "radial";
 
 export class AppStore {
-    liveData: LiveData | "Loading" | "Error" = "Loading";
     currentView: CurrentView = "period";
 
-    periodUsageStore: PeriodUsageStore = new PeriodUsageStore();
-    runningUsageStore: RunningUsageStore = new RunningUsageStore();
-    radialUsageStore: RadialUsageStore = new RadialUsageStore();
+    readonly periodUsageStore = new PeriodUsageStore();
+    readonly runningUsageStore = new RunningUsageStore();
+    readonly radialUsageStore = new RadialUsageStore();
+    readonly liveDataStore = new LiveDataStore();
 
     constructor() {
         makeAutoObservable(this);
-    }
-
-    setLiveData(liveData: LiveData | "Loading" | "Error") {
-        this.liveData = liveData;
     }
 }

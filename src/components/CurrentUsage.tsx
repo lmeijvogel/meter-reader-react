@@ -3,13 +3,15 @@ import { observer } from "mobx-react";
 import { useEffect } from "react";
 import { Color } from "../lib/Colors";
 import { LiveData } from "../models/LiveData";
+import { LiveDataStore } from "../stores/LiveDataStore";
 
 type Props = {
-    liveData: "Loading" | "Error" | LiveData;
+    store: LiveDataStore;
     onClick: () => void;
 };
 
-const CurrentUsage = observer(({ liveData, onClick }: Props) => {
+const CurrentUsage = observer(({ store, onClick }: Props) => {
+    const { liveData } = store;
     return (
         <div className={"gauges"} onClick={onClick}>
             {renderChild(liveData)}
