@@ -1,5 +1,3 @@
-import { observer } from "mobx-react";
-
 import { useEffect, useState } from "react";
 
 import { CurrentUsage } from "./CurrentUsage";
@@ -20,7 +18,7 @@ type Props = {
 
 type CurrentView = "period" | "recent" | "radial";
 
-const App = observer(({ liveDataStore, periodUsageStore, radialUsageStore }: Props) => {
+const App = ({ liveDataStore, periodUsageStore, radialUsageStore }: Props) => {
     const [currentView, setCurrentView] = useState<CurrentView>("period");
 
     useEffect(() => {
@@ -68,6 +66,6 @@ const App = observer(({ liveDataStore, periodUsageStore, radialUsageStore }: Pro
             </div>
         </div>
     );
-});
+};
 
 export { App };
