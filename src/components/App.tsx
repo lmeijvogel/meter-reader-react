@@ -1,6 +1,6 @@
 import { observer } from "mobx-react";
 
-import { Component } from "react";
+import { useEffect } from "react";
 
 import { AppStore } from "../stores/AppStore";
 
@@ -15,64 +15,54 @@ type Props = {
     store: AppStore;
 };
 
-const App = observer(
-    class App extends Component<Props> {
-        render() {
-            const { currentView, liveDataStore, periodUsageStore, radialUsageStore } = this.props.store;
+const App = observer(({ store }: Props) => {
+    const { currentView, liveDataStore, periodUsageStore, radialUsageStore } = store;
 
-            return (
-                <div id="mainContainer">
-                    <div>
-                        <CurrentUsage store={liveDataStore} onClick={this.currentUsageClicked} />
-                    </div>
-                    <div className="mainContent">
-                        {currentView === "recent" ? (
-                            <RecentUsageGraphs />
-                        ) : currentView === "period" ? (
-                            <>
-                                <UsageGraphs store={periodUsageStore} onTitleClick={this.showRadialUsage} />
-                                <ActualReadings store={liveDataStore} />
-                            </>
-                        ) : (
-                            <RadialUsage store={radialUsageStore} onTitleClick={this.closeRadialUsage} />
-                        )}
-                    </div>
-                </div>
-            );
+    useEffect(() => {
+        liveDataStore.startTimer();
+
+        return () => liveDataStore.stopTimer();
+    }, [liveDataStore]);
+
+    const currentUsageClicked = () => {
+        if (currentView === "recent") {
+            store.currentView = "period";
+        } else {
+            store.currentView = "recent";
         }
+    };
 
-        componentDidMount() {
-            this.props.store.liveDataStore.startTimer();
-        }
+    const showRadialUsage = (periodDescription: PeriodDescription) => {
+        const radialProps = radialUsageStore.getWeekAndYear(periodDescription.toDate());
 
-        componentWillUnmount() {
-            this.props.store.liveDataStore.stopTimer();
-        }
+        radialUsageStore.periodSelected(radialProps);
 
-        currentUsageClicked = () => {
-            const { currentView } = this.props.store;
+        store.currentView = "radial";
+    };
 
-            if (currentView === "recent") {
-                this.props.store.currentView = "period";
-            } else {
-                this.props.store.currentView = "recent";
-            }
-        };
+    const closeRadialUsage = () => {
+        store.currentView = "period";
+    };
 
-        showRadialUsage = (periodDescription: PeriodDescription) => {
-            const { radialUsageStore } = this.props.store;
-
-            const radialProps = radialUsageStore.getWeekAndYear(periodDescription.toDate());
-
-            radialUsageStore.periodSelected(radialProps);
-
-            this.props.store.currentView = "radial";
-        };
-
-        closeRadialUsage = () => {
-            this.props.store.currentView = "period";
-        };
-    }
-);
+    return (
+        <div id="mainContainer">
+            <div>
+                <CurrentUsage store={liveDataStore} onClick={currentUsageClicked} />
+            </div>
+            <div className="mainContent">
+                {currentView === "recent" ? (
+                    <RecentUsageGraphs />
+                ) : currentView === "period" ? (
+                    <>
+                        <UsageGraphs store={periodUsageStore} onTitleClick={showRadialUsage} />
+                        <ActualReadings store={liveDataStore} />
+                    </>
+                ) : (
+                    <RadialUsage store={radialUsageStore} onTitleClick={closeRadialUsage} />
+                )}
+            </div>
+        </div>
+    );
+});
 
 export { App };
