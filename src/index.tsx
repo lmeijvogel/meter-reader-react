@@ -1,7 +1,10 @@
 import * as ReactDOM from "react-dom";
 
 import { App } from "./components/App";
-import { AppStore } from "./stores/AppStore";
+import { LiveDataStore } from "./stores/LiveDataStore";
+import { PeriodUsageStore } from "./stores/PeriodUsageStore";
+import { RadialUsageStore } from "./stores/RadialUsageStore";
+import { RunningUsageStore } from "./stores/RunningUsageStore";
 
 // Importing these here will include them on the resulting page
 /* eslint-disable */
@@ -12,6 +15,17 @@ const milligramStyles = require("./styles/milligram.min.css");
 
 const appContainer = document.querySelector("#root");
 
-const appStore = new AppStore();
+const periodUsageStore = new PeriodUsageStore();
+const runningUsageStore = new RunningUsageStore();
+const radialUsageStore = new RadialUsageStore();
+const liveDataStore = new LiveDataStore();
 
-ReactDOM.render(<App store={appStore} />, appContainer);
+ReactDOM.render(
+    <App
+        periodUsageStore={periodUsageStore}
+        runningUsageStore={runningUsageStore}
+        radialUsageStore={radialUsageStore}
+        liveDataStore={liveDataStore}
+    />,
+    appContainer
+);

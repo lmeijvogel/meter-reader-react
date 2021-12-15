@@ -1,8 +1,6 @@
 import { observer } from "mobx-react";
 
-import { useEffect } from "react";
-
-import { AppStore } from "../stores/AppStore";
+import { useEffect, useState } from "react";
 
 import { CurrentUsage } from "./CurrentUsage";
 import { RecentUsageGraphs } from "./RecentUsageGraphs";
@@ -10,13 +8,22 @@ import { UsageGraphs } from "./UsageGraphs";
 import { ActualReadings } from "./ActualReadings";
 import { RadialUsage } from "./RadialUsage/RadialUsageGraphs";
 import { PeriodDescription } from "../models/PeriodDescription";
+import { PeriodUsageStore } from "../stores/PeriodUsageStore";
+import { RunningUsageStore } from "../stores/RunningUsageStore";
+import { RadialUsageStore } from "../stores/RadialUsageStore";
+import { LiveDataStore } from "../stores/LiveDataStore";
 
 type Props = {
-    store: AppStore;
+    periodUsageStore: PeriodUsageStore;
+    runningUsageStore: RunningUsageStore;
+    radialUsageStore: RadialUsageStore;
+    liveDataStore: LiveDataStore;
 };
 
-const App = observer(({ store }: Props) => {
-    const { currentView, liveDataStore, periodUsageStore, radialUsageStore } = store;
+type CurrentView = "period" | "recent" | "radial";
+
+const App = observer(({ liveDataStore, periodUsageStore, radialUsageStore }: Props) => {
+    const [currentView, setCurrentView] = useState<CurrentView>("period");
 
     useEffect(() => {
         liveDataStore.startTimer();
@@ -26,9 +33,9 @@ const App = observer(({ store }: Props) => {
 
     const currentUsageClicked = () => {
         if (currentView === "recent") {
-            store.currentView = "period";
+            setCurrentView("period");
         } else {
-            store.currentView = "recent";
+            setCurrentView("recent");
         }
     };
 
@@ -37,11 +44,11 @@ const App = observer(({ store }: Props) => {
 
         radialUsageStore.periodSelected(radialProps);
 
-        store.currentView = "radial";
+        setCurrentView("radial");
     };
 
     const closeRadialUsage = () => {
-        store.currentView = "period";
+        setCurrentView("period");
     };
 
     return (
