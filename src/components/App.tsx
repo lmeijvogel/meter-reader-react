@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 
 import { CurrentUsage } from "./CurrentUsage";
 import { RecentUsageGraphs } from "./RecentUsageGraphs";
-import { UsageGraphs } from "./PeriodUsage/UsageGraphs";
+import { PeriodUsageDisplay } from "./PeriodUsage/PeriodUsageDisplay";
 import { ActualReadings } from "./ActualReadings";
 import { RadialUsage } from "./RadialUsage/RadialUsageGraphs";
 import { PeriodDescription } from "../models/PeriodDescription";
@@ -58,7 +58,7 @@ const App = ({ liveDataStore, periodUsageStore, radialUsageStore }: Props) => {
                     <RecentUsageGraphs />
                 ) : currentView === "period" ? (
                     <>
-                        <UsageGraphs store={periodUsageStore} onTitleClick={showRadialUsage} />
+                        <PeriodUsageDisplay store={periodUsageStore} onTitleClick={showRadialUsage} />
                         <ActualReadings store={liveDataStore} />
                     </>
                 ) : (

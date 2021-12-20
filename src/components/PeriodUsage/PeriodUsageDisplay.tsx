@@ -1,76 +1,49 @@
 import { observer } from "mobx-react";
 
-import { spreadData } from "../../helpers/spreadData";
-import { Color } from "../../lib/Colors";
-import { PeriodDescription } from "../../models//PeriodDescription";
-import { PeriodDataProvider } from "../../models/PeriodDataProvider";
-import { Graph } from "./Graph";
+import { PeriodDescription } from "../../models/PeriodDescription";
 
-type Props = {
-    dataProvider: PeriodDataProvider;
-    enabled: boolean;
-    onSelect: (period: PeriodDescription) => void;
+import { NavigationButtons } from "./NavigationButtons";
+import { Graphs } from "./Graphs";
+import { LoadingState, PeriodUsageStore } from "../../stores/PeriodUsageStore";
+import { useEffect } from "react";
+
+type IProps = {
+    store: PeriodUsageStore;
+    onTitleClick: (periodDescription: PeriodDescription) => void;
 };
 
-const PeriodUsageDisplay = observer(({ dataProvider, enabled, onSelect }: Props) => {
-    const onClick = (index: number): void => {
-        if (dataProvider.canDrillDown) {
-            onSelect(dataProvider.descriptionAt(index));
-        }
+const PeriodUsageDisplay = observer(({ store, onTitleClick }: IProps) => {
+    const { loadingState, dataProvider, setPeriodDescription } = store;
+
+    useEffect(() => {
+        store.initializeIfNecessary();
+    }, [store]);
+
+    // TODO: Not inlined below yet since we probably want to change the URL as well
+    const onSelect = (periodDescription: PeriodDescription) => {
+        setPeriodDescription(periodDescription);
     };
 
-    if (!dataProvider) {
-        return null;
+    // TODO: Will this work correctly? I think so.
+    const enabled = loadingState === LoadingState.Loaded;
+
+    if (loadingState === LoadingState.Loaded && !!dataProvider) {
+        const { periodDescription } = dataProvider;
+
+        const onClick = () => onTitleClick(periodDescription);
+
+        return (
+            <>
+                <h2 onClick={onClick}>{periodDescription.toTitle()}</h2>
+
+                <Graphs dataProvider={dataProvider} onSelect={onSelect} enabled={enabled} />
+
+                <NavigationButtons periodDescription={periodDescription} onSelect={onSelect} enabled={enabled} />
+            </>
+        );
     }
 
-    if (!dataProvider.periodUsage) {
-        return <div>Loading</div>;
-    }
-
-    const data = spreadData(dataProvider.periodUsage, dataProvider.dataRange);
-
-    const { periodDescription } = dataProvider;
-
-    return (
-        <div className={"periodUsageDisplay" + (enabled ? "" : " disabled")}>
-            <Graph
-                label="Gas"
-                periodDescription={periodDescription}
-                data={data}
-                maxY={dataProvider.maxGasY}
-                fieldName="gas"
-                color={Color.gas}
-                colorIntense={Color.gasIntense}
-                onClick={onClick}
-                tooltipLabelBuilder={dataProvider.tooltipLabel}
-                xOffset={dataProvider.periodDescription.xOffset}
-            />
-            <Graph
-                label="Stroom"
-                periodDescription={periodDescription}
-                data={data}
-                maxY={dataProvider.maxStroomY}
-                fieldName="stroom"
-                color={Color.stroom}
-                colorIntense={Color.stroomIntense}
-                onClick={onClick}
-                tooltipLabelBuilder={dataProvider.tooltipLabel}
-                xOffset={dataProvider.periodDescription.xOffset}
-            />
-            <Graph
-                label="Water"
-                periodDescription={periodDescription}
-                data={data}
-                maxY={dataProvider.maxWaterY}
-                fieldName="water"
-                color={Color.water}
-                colorIntense={Color.waterIntense}
-                onClick={onClick}
-                tooltipLabelBuilder={dataProvider.tooltipLabel}
-                xOffset={dataProvider.periodDescription.xOffset}
-            />
-        </div>
-    );
+    return null;
 });
 
 export { PeriodUsageDisplay };
