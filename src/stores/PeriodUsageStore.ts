@@ -38,9 +38,7 @@ export class PeriodUsageStore {
     }
 
     private defaultPeriodDescription(): PeriodDescription {
-        const date = new Date();
-
-        return new MonthDescription(date.getFullYear(), date.getMonth());
+        return DayDescription.today();
     }
 
     setPeriodDescription = (periodDescription: PeriodDescription) => {
