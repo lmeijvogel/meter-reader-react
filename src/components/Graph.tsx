@@ -9,9 +9,12 @@ import { costsFor, PriceCategory } from "../helpers/PriceCalculator";
 import { UsageData, UsageField } from "../models/UsageData";
 import { GraphXOffset } from "./PeriodUsageDisplay";
 import { assertNever } from "../lib/assertNever";
+import { getTimes } from "suncalc";
+import { DayDescription, PeriodDescription } from "../models/PeriodDescription";
 
 type Props = {
     label: string;
+    periodDescription: PeriodDescription;
     data: (UsageData | null)[];
     maxY: number;
     fieldName: UsageField;
@@ -95,6 +98,7 @@ export class Graph extends React.Component<Props> {
                 <g className="xAxis" />
                 <g className="yAxis" />
                 <g className="gridLines" />
+                <g className="additionalInfo" />
                 <g className="values" />
                 <g className="selection">
                     <rect />
@@ -305,6 +309,18 @@ export class Graph extends React.Component<Props> {
         this.drawBars(svg, this.processedData);
 
         this.renderChartTitle(this.totalUsage());
+
+        if (this.props.fieldName === "stroom") {
+            const { periodDescription } = this.props;
+
+            if (periodDescription instanceof DayDescription) {
+                this.drawTimesOfDay(svg, periodDescription.toDate());
+            } else {
+                const g = svg.select("g.additionalInfo");
+
+                g.selectChildren().remove();
+            }
+        }
     }
 
     private renderChartTitle(usage: number, extraText?: string) {
@@ -380,6 +396,152 @@ export class Graph extends React.Component<Props> {
             .attr("width", this.scaleX.bandwidth())
             .attr("fill", this.props.color)
             .attr("index", (_d, i) => i);
+    }
+
+    private drawTimesOfDay(svg: d3.Selection<d3.BaseType, unknown, HTMLElement, any>, date: Date) {
+        const [latitude, longitude] = [51.922909, 4.47059];
+
+        const times = getTimes(date, latitude, longitude);
+
+        const g = svg.select("g.additionalInfo");
+
+        g.selectChildren().remove();
+
+        const nightColor = "#006"; // Sun > 18deg below horizon
+        const darkTwilightColor = "#559"; // Sun > 12deg below horizon
+        const lightTwilightColor = "#aad"; // Sun > 0deg below horizon
+        const sunriseColor = "#dd8";
+        const dayColor = "#fff";
+
+        const timeBands: { startHour: number; endHour: number; color: string }[] = [];
+
+        const night = times.night;
+
+        if (isNaN(night.getTime())) {
+            /* No "deep" night today, so just a long dusk */
+            timeBands.push({
+                startHour: this.calculateX(times.dusk)!,
+                endHour: this.scaleX("24")!,
+                color: darkTwilightColor
+            });
+
+            timeBands.push({
+                startHour: this.scaleX("0")!,
+                endHour: this.calculateX(times.dawn)!,
+                color: darkTwilightColor
+            });
+        } else {
+            if (night.getHours() > 12) {
+                // Dusk is one entry, and night crosses midnight
+                timeBands.push({
+                    startHour: this.calculateX(times.dusk)!,
+                    endHour: this.calculateX(times.night)!,
+                    color: darkTwilightColor
+                });
+
+                timeBands.push({
+                    startHour: this.calculateX(night)!,
+                    endHour: this.scaleX("24")!,
+                    color: nightColor
+                });
+
+                timeBands.push({
+                    startHour: this.scaleX("0")!,
+                    endHour: this.calculateX(times.nightEnd)!,
+                    color: nightColor
+                });
+            } else {
+                // Night is one entry and dusk crosses midnight
+                timeBands.push({
+                    startHour: this.calculateX(night)!,
+                    endHour: this.calculateX(times.nightEnd)!,
+                    color: nightColor
+                });
+
+                timeBands.push({
+                    startHour: this.calculateX(times.dusk)!,
+                    endHour: this.scaleX("24")!,
+                    color: darkTwilightColor
+                });
+
+                timeBands.push({
+                    startHour: this.scaleX("0")!,
+                    endHour: this.calculateX(times.night)!,
+                    color: darkTwilightColor
+                });
+            }
+
+            timeBands.push({
+                startHour: this.calculateX(times.nightEnd)!,
+                endHour: this.calculateX(times.dawn)!,
+                color: darkTwilightColor
+            });
+        }
+
+        [
+            {
+                startTime: times.dawn,
+                color: lightTwilightColor
+            },
+            {
+                startTime: times.sunrise,
+                color: sunriseColor
+            },
+            {
+                startTime: times.sunriseEnd,
+                color: dayColor
+            },
+            {
+                startTime: times.sunsetStart,
+                color: sunriseColor
+            },
+            {
+                startTime: times.sunset,
+                color: lightTwilightColor
+            },
+            {
+                // This one is not actually used
+                startTime: times.dusk,
+                color: darkTwilightColor
+            }
+        ].forEach(({ startTime, color }, index, array) => {
+            const endTime = array[index + 1]?.startTime;
+
+            if (!endTime) {
+                return;
+            }
+
+            timeBands.push({
+                startHour: this.calculateX(startTime)!,
+                endHour: this.calculateX(endTime)!,
+                color: color
+            });
+        });
+
+        timeBands.forEach(({ startHour, endHour, color }, index) => {
+            g.append("rect")
+                .attr("x", startHour)
+                .attr("y", padding.top)
+                .attr("width", endHour - startHour)
+                .attr("height", this.scaleY(0) - padding.top)
+                .attr("fill", color)
+                .attr("fill-opacity", 0.15);
+        });
+    }
+
+    private calculateX(date: Date): number | null {
+        /* Interpolate position because `this.scaleX` only interpolates full
+         * bars based on hours */
+        const startOfHourBar = this.scaleX(date.getHours().toString());
+        const endOfHourBar = this.scaleX((date.getHours() + 1).toString());
+
+        if (!startOfHourBar || !endOfHourBar) {
+            return null;
+        }
+
+        const width = endOfHourBar - startOfHourBar;
+
+        return startOfHourBar + width * (date.getMinutes() / 60);
     }
 
     private totalUsage() {

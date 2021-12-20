@@ -16,7 +16,6 @@ const UsageGraphs = observer(({ store, onTitleClick }: IProps) => {
     const { loadingState, dataProvider, setPeriodDescription } = store;
 
     useEffect(() => {
-        console.log("Initializing store");
         store.initializeIfNecessary();
     }, [store]);
 

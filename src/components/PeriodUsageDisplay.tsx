@@ -31,10 +31,13 @@ const PeriodUsageDisplay = observer(({ dataProvider, enabled, onSelect }: Props)
 
     const data = spreadData(dataProvider.periodUsage, dataProvider.dataRange);
 
+    const { periodDescription } = dataProvider;
+
     return (
         <div className={"periodUsageDisplay" + (enabled ? "" : " disabled")}>
             <Graph
                 label="Gas"
+                periodDescription={periodDescription}
                 data={data}
                 maxY={dataProvider.maxGasY}
                 fieldName="gas"
@@ -46,6 +49,7 @@ const PeriodUsageDisplay = observer(({ dataProvider, enabled, onSelect }: Props)
             />
             <Graph
                 label="Stroom"
+                periodDescription={periodDescription}
                 data={data}
                 maxY={dataProvider.maxStroomY}
                 fieldName="stroom"
@@ -57,6 +61,7 @@ const PeriodUsageDisplay = observer(({ dataProvider, enabled, onSelect }: Props)
             />
             <Graph
                 label="Water"
+                periodDescription={periodDescription}
                 data={data}
                 maxY={dataProvider.maxWaterY}
                 fieldName="water"
