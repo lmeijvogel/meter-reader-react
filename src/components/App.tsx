@@ -2,10 +2,11 @@ import { useEffect, useState } from "react";
 
 import { CurrentUsage } from "./CurrentUsage";
 import { RecentUsageGraphs } from "./RecentUsageGraphs";
-import { UsageGraphs } from "./UsageGraphs";
+import { UsageGraphs } from "./PeriodUsage/UsageGraphs";
 import { ActualReadings } from "./ActualReadings";
 import { RadialUsage } from "./RadialUsage/RadialUsageGraphs";
 import { PeriodDescription } from "../models/PeriodDescription";
+
 import { PeriodUsageStore } from "../stores/PeriodUsageStore";
 import { RadialUsageStore } from "../stores/RadialUsageStore";
 import { LiveDataStore } from "../stores/LiveDataStore";

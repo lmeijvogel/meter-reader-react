@@ -1,4 +1,4 @@
-import { GraphXOffset } from "../components/PeriodUsageDisplay";
+export type GraphXOffset = "on_value" | "between_values";
 
 const DAYS_OF_WEEK = ["Zo", "Ma", "Di", "Wo", "Do", "Vr", "Za"];
 

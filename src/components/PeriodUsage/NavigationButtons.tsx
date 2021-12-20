@@ -1,5 +1,5 @@
-import { NavigationButton } from "./NavigationButton";
-import { PeriodDescription, DayDescription } from "../models/PeriodDescription";
+import { PeriodDescription, DayDescription } from "../../models/PeriodDescription";
+import { NavigationButton } from "../NavigationButton";
 
 interface IProps {
     enabled: boolean;

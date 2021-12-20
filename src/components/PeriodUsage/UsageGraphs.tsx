@@ -1,10 +1,10 @@
 import { observer } from "mobx-react";
 
-import { PeriodDescription } from "../models/PeriodDescription";
+import { PeriodDescription } from "../../models/PeriodDescription";
 
 import { NavigationButtons } from "./NavigationButtons";
 import { PeriodUsageDisplay } from "./PeriodUsageDisplay";
-import { LoadingState, PeriodUsageStore } from "../stores/PeriodUsageStore";
+import { LoadingState, PeriodUsageStore } from "../../stores/PeriodUsageStore";
 import { useEffect } from "react";
 
 type IProps = {

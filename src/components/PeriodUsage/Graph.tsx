@@ -3,14 +3,13 @@ import { createRef } from "react";
 
 import * as d3 from "d3";
 
-import { convertToRelative } from "../helpers/convertToRelative";
-import { interpolateArray } from "../helpers/interpolateArray";
-import { costsFor, PriceCategory } from "../helpers/PriceCalculator";
-import { UsageData, UsageField } from "../models/UsageData";
-import { GraphXOffset } from "./PeriodUsageDisplay";
-import { assertNever } from "../lib/assertNever";
+import { convertToRelative } from "../../helpers/convertToRelative";
+import { interpolateArray } from "../../helpers/interpolateArray";
+import { costsFor, PriceCategory } from "../../helpers/PriceCalculator";
+import { UsageData, UsageField } from "../../models/UsageData";
+import { assertNever } from "../../lib/assertNever";
 import { getTimes } from "suncalc";
-import { DayDescription, PeriodDescription } from "../models/PeriodDescription";
+import { DayDescription, GraphXOffset, PeriodDescription } from "../../models/PeriodDescription";
 
 type Props = {
     label: string;
@@ -310,6 +309,7 @@ export class Graph extends React.Component<Props> {
 
         this.renderChartTitle(this.totalUsage());
 
+        /* TODO: Only draw if we're drawing days */
         if (this.props.fieldName === "stroom") {
             const { periodDescription } = this.props;
 
@@ -518,7 +518,7 @@ export class Graph extends React.Component<Props> {
             });
         });
 
-        timeBands.forEach(({ startHour, endHour, color }, index) => {
+        timeBands.forEach(({ startHour, endHour, color }) => {
             g.append("rect")
                 .attr("x", startHour)
                 .attr("y", padding.top)

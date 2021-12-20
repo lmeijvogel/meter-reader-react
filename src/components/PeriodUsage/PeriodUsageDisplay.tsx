@@ -1,12 +1,10 @@
 import { observer } from "mobx-react";
 
-import { PeriodDescription } from "../models//PeriodDescription";
-import { spreadData } from "../helpers/spreadData";
+import { spreadData } from "../../helpers/spreadData";
+import { Color } from "../../lib/Colors";
+import { PeriodDescription } from "../../models//PeriodDescription";
+import { PeriodDataProvider } from "../../models/PeriodDataProvider";
 import { Graph } from "./Graph";
-import { PeriodDataProvider } from "../models/PeriodDataProvider";
-import { Color } from "../lib/Colors";
-
-export type GraphXOffset = "on_value" | "between_values";
 
 type Props = {
     dataProvider: PeriodDataProvider;
